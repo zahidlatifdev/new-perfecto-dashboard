@@ -1,0 +1,1 @@
+export { AccountsManagementView } from './accounts-management-view';
