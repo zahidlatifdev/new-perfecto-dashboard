@@ -1,2 +1,1 @@
-export * from './transaction-view';
-export * from './statement-transaction-view';
+export { TransactionsView } from './transactions-view';

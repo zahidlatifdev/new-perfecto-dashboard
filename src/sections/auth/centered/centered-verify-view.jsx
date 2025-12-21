@@ -73,8 +73,8 @@ export function CenteredVerifyView() {
         code: data.code,
       });
 
-      // Redirect to sign in after successful verification
-      router.push(paths.auth.jwt.signIn);
+      // Redirect to account connection page after successful verification
+      router.push(`${paths.auth.jwt.connectAccount}?email=${encodeURIComponent(data.email)}`);
     } catch (error) {
       console.error('Email verification failed:', error);
       setErrorMsg(error.message || 'Invalid verification code. Please check and try again.');

@@ -255,6 +255,21 @@ export const endpoints = {
   plStatement: {
     get: '/api/v1/pl-statement',
   },
+  plaid: {
+    createLinkToken: '/api/v1/plaid/link-token',
+    exchangeToken: '/api/v1/plaid/exchange-token',
+    accounts: (companyId) => `/api/v1/plaid/accounts/${companyId}`,
+    sync: (accountId) => `/api/v1/plaid/sync/${accountId}`,
+    unlink: (accountId) => `/api/v1/plaid/unlink/${accountId}`,
+    integrations: (companyId) => `/api/v1/plaid/integrations/${companyId}`,
+  },
+  accounts: {
+    list: '/api/v1/accounts',
+    create: '/api/v1/accounts',
+    get: (id) => `/api/v1/accounts/${id}`,
+    update: (id) => `/api/v1/accounts/${id}`,
+    delete: (id) => `/api/v1/accounts/${id}`,
+  },
 };
 
 // Export cookie utilities for use in other files
