@@ -14,14 +14,11 @@ import { useAuthContext } from '../hooks';
 // ----------------------------------------------------------------------
 
 export function AuthGuard({ children }) {
-
   const router = useRouter();
-
   const pathname = usePathname();
-
   const searchParams = useSearchParams();
 
-  const { authenticated, loading, user, companies, selectedCompany } = useAuthContext();
+  const { authenticated, loading, user, company } = useAuthContext();
 
   const [isChecking, setIsChecking] = useState(true);
 
@@ -29,17 +26,15 @@ export function AuthGuard({ children }) {
     (name, value) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set(name, value);
-
       return params.toString();
     },
     [searchParams]
   );
 
-  const normalizePath = (path) => path.replace(/\/+$/, '');
-
   const checkPermissions = () => {
     if (loading) return;
 
+    // Not authenticated - redirect to login
     if (!authenticated) {
       const { method } = CONFIG.auth;
       const signInPath = {
@@ -50,58 +45,22 @@ export function AuthGuard({ children }) {
       return;
     }
 
-    // If user has no companies, redirect to company creation page (settings with create param)
-    if (
-      authenticated &&
-      user &&
-      (!companies || companies.length === 0)
-    ) {
-      // Redirect to company creation tab in settings (add &create=1 to trigger creation UI if needed)
-      router.replace(paths.dashboard.settings + '?tab=companies&create=1');
+    // Authenticated but no company - shouldn't happen in signup flow
+    // but handle gracefully by redirecting to settings
+    if (authenticated && user && !company) {
+      console.warn('User authenticated but no company found');
+      router.replace(paths.dashboard.settings);
       return;
     }
 
-    // If user has companies but no company is selected and not on select company page
-    if (
-      authenticated &&
-      user &&
-      companies?.length > 0 &&
-      !selectedCompany &&
-      normalizePath(pathname) !== normalizePath(paths.dashboard.selectCompany)
-    ) {
-      router.replace(paths.dashboard.selectCompany);
-      return;
-    }
-
-    // If user is on select company page or settings page, allow rendering
-    if (
-      authenticated &&
-      user &&
-      (normalizePath(pathname) === normalizePath(paths.dashboard.selectCompany) ||
-        pathname.startsWith('/dashboard/settings'))
-    ) {
-      setIsChecking(false);
-      return;
-    }
-
-    // If user has a selected company and is trying to access select company page, redirect to dashboard
-    if (
-      authenticated &&
-      user &&
-      selectedCompany &&
-      normalizePath(pathname) === normalizePath(paths.dashboard.selectCompany)
-    ) {
-      router.replace(paths.dashboard.root);
-      return;
-    }
-
+    // All checks passed - allow access
     setIsChecking(false);
   };
 
   useEffect(() => {
     checkPermissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authenticated, loading, companies, selectedCompany, pathname]);
+  }, [authenticated, loading, company, pathname]);
 
   if (isChecking) {
     return <SplashScreen />;

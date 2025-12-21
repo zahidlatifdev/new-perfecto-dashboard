@@ -2,7 +2,7 @@
 
 import axios, { endpoints } from 'src/utils/axios';
 
-import { setSession, removeTokens, getRefreshToken } from './utils';
+import { setSession, removeTokens } from './utils';
 
 /** **************************************
  * Sign in
@@ -13,20 +13,25 @@ export const signInWithPassword = async ({ email, password }) => {
 
     const res = await axios.post(endpoints.auth.signIn, params);
 
-    const { tokens, user, companies } = res.data.data;
+    // Backend returns: { user, companies, selectedCompany, token }
+    const { token, user, companies, selectedCompany } = res.data.data;
 
-    if (!tokens?.accessToken) {
+    if (!token) {
       throw new Error('Access token not found in response');
     }
 
-    await setSession(tokens.accessToken, tokens.refreshToken);
+    // Set session with only access token (no refresh token)
+    await setSession(token);
 
-    // Immediately switch to the first company (or preferred logic)
-    if (companies && companies.length > 0) {
-      await switchCompany({ companyId: companies[0]._id });
+    // Store selected company in localStorage
+    if (selectedCompany) {
+      localStorage.setItem('selectedCompany', JSON.stringify(selectedCompany));
+    } else if (companies && companies.length > 0) {
+      // Fallback: if no selectedCompany but has companies, use first one
+      localStorage.setItem('selectedCompany', JSON.stringify(companies[0]));
     }
 
-    return { user, companies, tokens };
+    return { user, companies, selectedCompany };
   } catch (error) {
     console.error('Error during sign in:', error);
     throw error;
@@ -36,15 +41,15 @@ export const signInWithPassword = async ({ email, password }) => {
 /** **************************************
  * Sign up
  *************************************** */
-export const signUp = async ({ 
-  email, 
-  password, 
-  firstName, 
-  lastName, 
-  phone, 
-  companyName, 
-  companyType, 
-  companySize 
+export const signUp = async ({
+  email,
+  password,
+  firstName,
+  lastName,
+  phone,
+  companyName,
+  companyType,
+  companySize
 }) => {
   const params = {
     email,
@@ -60,6 +65,7 @@ export const signUp = async ({
   try {
     const res = await axios.post(endpoints.auth.signUp, params);
 
+    // Backend returns: { user, company }
     const { user, company } = res.data.data;
 
     // Note: User needs to verify email before they can sign in
@@ -76,44 +82,15 @@ export const signUp = async ({
  *************************************** */
 export const signOut = async () => {
   try {
-    // Call logout endpoint to invalidate tokens on server
+    // Call logout endpoint to invalidate session on server
     await axios.post(endpoints.auth.signOut);
   } catch (error) {
     // Continue with local logout even if server call fails
     console.error('Error during server logout:', error);
   } finally {
-    await setSession(null);
-  }
-};
-
-/** **************************************
- * Refresh token
- *************************************** */
-export const refreshToken = async () => {
-  try {
-    const refreshTokenValue = getRefreshToken();
-
-    if (!refreshTokenValue) {
-      throw new Error('No refresh token available');
-    }
-
-    const res = await axios.post(endpoints.auth.refreshToken, {
-      refreshToken: refreshTokenValue,
-    });
-
-    const { tokens } = res.data.data;
-
-    if (!tokens?.accessToken) {
-      throw new Error('Access token not found in refresh response');
-    }
-
-    await setSession(tokens.accessToken, tokens.refreshToken);
-
-    return tokens;
-  } catch (error) {
-    console.error('Error during token refresh:', error);
+    // Clear all session data
     removeTokens();
-    throw error;
+    localStorage.removeItem('selectedCompany');
   }
 };
 
@@ -144,11 +121,11 @@ export const resetPassword = async ({ token, password }) => {
 };
 
 /** **************************************
- * Verify email
+ * Verify email with code
  *************************************** */
-export const verifyEmail = async ({ token }) => {
+export const verifyEmail = async ({ email, code }) => {
   try {
-    const res = await axios.get(`${endpoints.auth.verifyEmail}/${token}`);
+    const res = await axios.post(endpoints.auth.verifyEmail, { email, code });
     return res.data;
   } catch (error) {
     console.error('Error during email verification:', error);
@@ -157,21 +134,27 @@ export const verifyEmail = async ({ token }) => {
 };
 
 /** **************************************
- * Switch company
+ * Switch company (kept for future multi-company support)
+ * Currently simplified for single company per user
  *************************************** */
 export const switchCompany = async ({ companyId }) => {
   try {
     const res = await axios.post(endpoints.auth.switchCompany, { companyId });
 
-    const { tokens, company } = res.data.data;
+    // Backend returns: { company, token }
+    const { token, company } = res.data.data;
 
-    if (!tokens?.accessToken) {
+    if (!token) {
       throw new Error('Access token not found in response');
     }
 
-    await setSession(tokens.accessToken, tokens.refreshToken);
+    // Set new session with new token
+    await setSession(token);
+
+    // Update selected company in localStorage
     localStorage.setItem('selectedCompany', JSON.stringify(company));
-    return { company, tokens };
+
+    return { company };
   } catch (error) {
     console.error('Error during company switch:', error);
     throw error;

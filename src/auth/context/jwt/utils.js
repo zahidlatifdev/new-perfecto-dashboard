@@ -3,7 +3,7 @@ import { paths } from 'src/routes/paths';
 import axios from 'src/utils/axios';
 import { getCookie, setCookie, removeCookie } from 'src/utils/axios';
 
-import { STORAGE_KEY, REFRESH_TOKEN_KEY } from './constant';
+import { STORAGE_KEY } from './constant';
 
 // ----------------------------------------------------------------------
 
@@ -58,7 +58,7 @@ export function tokenExpired(exp) {
 
   setTimeout(() => {
     try {
-      alert('Token expired!');
+      console.warn('Token expired! Redirecting to sign in...');
       removeTokens();
       window.location.href = paths.auth.jwt.signIn;
     } catch (error) {
@@ -72,43 +72,38 @@ export function tokenExpired(exp) {
 
 export function removeTokens() {
   removeCookie(STORAGE_KEY);
-  removeCookie(REFRESH_TOKEN_KEY);
   delete axios.defaults.headers.common.Authorization;
+  localStorage.removeItem('selectedCompany');
 }
 
 // ----------------------------------------------------------------------
 
-export async function setSession(accessToken, refreshToken = null) {
+export async function setSession(accessToken) {
   try {
     if (accessToken) {
-      setCookie(STORAGE_KEY, accessToken);
+      // Set cookie with 7 days expiration (matching backend JWT expiration)
+      setCookie(STORAGE_KEY, accessToken, 7);
 
-      if (refreshToken) {
-        setCookie(REFRESH_TOKEN_KEY, refreshToken);
-      }
-
+      // Set authorization header for all requests
       axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
+      // Decode token to check expiration
       const decodedToken = jwtDecode(accessToken);
 
       if (decodedToken && 'exp' in decodedToken) {
+        // Set up auto-logout when token expires
         tokenExpired(decodedToken.exp);
       } else {
         throw new Error('Invalid access token!');
       }
     } else {
+      // Clear session
       removeTokens();
     }
   } catch (error) {
     console.error('Error during set session:', error);
     throw error;
   }
-}
-
-// ----------------------------------------------------------------------
-
-export function getRefreshToken() {
-  return getCookie(REFRESH_TOKEN_KEY);
 }
 
 // ----------------------------------------------------------------------

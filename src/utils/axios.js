@@ -77,38 +77,17 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle authentication errors
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = getCookie('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post(`${CONFIG.site.serverUrl}/api/v1/auth/refresh-token`, {
-            refreshToken,
-          });
-
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
-
-          setCookie('accessToken', accessToken);
-          if (newRefreshToken) {
-            setCookie('refreshToken', newRefreshToken);
-          }
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return axiosInstance(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
+    // If 401 Unauthorized, clear session and redirect to login
+    if (error.response?.status === 401) {
+      // Only redirect if not already on auth pages
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
         removeCookie('accessToken');
-        removeCookie('refreshToken');
+        localStorage.removeItem('selectedCompany');
         window.location.href = '/auth/sign-in';
-        return Promise.reject(refreshError);
       }
     }
 
@@ -141,7 +120,6 @@ export const endpoints = {
     signIn: '/api/v1/auth/login',
     signUp: '/api/v1/auth/register',
     signOut: '/api/v1/auth/sign-out',
-    refreshToken: '/api/v1/auth/refresh-token',
     forgotPassword: '/api/v1/auth/forgot-password',
     resetPassword: '/api/v1/auth/reset-password',
     verifyEmail: '/api/v1/auth/verify-email',

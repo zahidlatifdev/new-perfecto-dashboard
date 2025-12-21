@@ -9,15 +9,14 @@ import { getCookie } from 'src/utils/axios';
 
 import { STORAGE_KEY } from './constant';
 import { AuthContext } from '../auth-context';
-import { setSession, isValidToken, jwtDecode } from './utils';
+import { setSession, isValidToken } from './utils';
 
 // ----------------------------------------------------------------------
 
 export function AuthProvider({ children }) {
   const { state, setState } = useSetState({
     user: null,
-    companies: [],
-    selectedCompany: null,
+    company: null, // Simplified to single company
     loading: true,
   });
 
@@ -30,42 +29,20 @@ export function AuthProvider({ children }) {
 
         const res = await axios.get(endpoints.auth.me);
 
-        // Handle the API response structure
-        const { user, companies } = res.data.data;
+        // Backend returns: { user, companies, selectedCompany }
+        const { user, selectedCompany } = res.data.data;
 
-        // Extract company context from JWT token
-        const decodedToken = jwtDecode(accessToken);
-        let selectedCompany = null;
-
-        if (decodedToken?.companyId && companies?.length > 0) {
-          selectedCompany = companies.find(company =>
-            company._id.toString() === decodedToken.companyId.toString()
-          );
-
-          // If selected company found, get user's role in that company
-          if (selectedCompany) {
-            const userInCompany = selectedCompany.users?.find(u =>
-              u.userId._id?.toString() === user._id.toString() ||
-              u.userId.toString() === user._id.toString()
-            );
-            if (userInCompany) {
-              selectedCompany.userRole = userInCompany.role;
-              selectedCompany.userPermissions = userInCompany.permissions;
-            }
-          }
-        }
-
+        // For single company per user, just use selectedCompany
+        // The companies array is kept in backend for future multi-company support
         setState({
           user,
-          companies,
-          selectedCompany,
+          company: selectedCompany,
           loading: false
         });
       } else {
         setState({
           user: null,
-          companies: [],
-          selectedCompany: null,
+          company: null,
           loading: false
         });
       }
@@ -73,28 +50,33 @@ export function AuthProvider({ children }) {
       console.error('Session check failed:', error);
       setState({
         user: null,
-        companies: [],
-        selectedCompany: null,
+        company: null,
         loading: false
       });
     }
   }, [setState]);
 
+  // Keep switchCompany for future multi-company support
+  // Currently, users only have one company
   const switchCompany = useCallback(async (companyId) => {
     try {
-      const res = await axios.post(endpoints.auth.switchCompany, { companyId });
+      const { switchCompany: switchCompanyAction } = await import('./action');
+      const { company } = await switchCompanyAction({ companyId });
+      
+      // Update state with new company
+      setState(prev => ({
+        ...prev,
+        company
+      }));
 
-      const { accessToken } = res.data.data.tokens;
-      setSession(accessToken);
-      localStorage.setItem('selectedCompany', JSON.stringify(res.data.data.company));
-
+      // Refresh session to get updated user data
       await checkUserSession();
 
     } catch (error) {
       console.error('Company switch failed:', error);
       throw error;
     }
-  }, [checkUserSession]);
+  }, [checkUserSession, setState]);
 
   useEffect(() => {
     checkUserSession();
@@ -142,8 +124,7 @@ export function AuthProvider({ children }) {
     await signOutAction();
     setState({
       user: null,
-      companies: [],
-      selectedCompany: null,
+      company: null,
       loading: false,
     });
   }, [setState]);
@@ -153,14 +134,14 @@ export function AuthProvider({ children }) {
       user: state.user
         ? {
           ...state.user,
-          role: state.selectedCompany?.userRole ?? 'user',
-          permissions: state.selectedCompany?.userPermissions ?? {},
+          // Add role from company context
+          role: state.company?.role ?? 'user',
         }
         : null,
-      companies: state.companies,
-      selectedCompany: state.selectedCompany,
+      company: state.company, // Single company instead of companies array
+      selectedCompany: state.company, // Alias for backward compatibility
       checkUserSession,
-      switchCompany,
+      switchCompany, // Kept for future multi-company support
       signIn,
       signUp,
       signOut,
@@ -175,8 +156,7 @@ export function AuthProvider({ children }) {
       signUp, 
       signOut, 
       state.user, 
-      state.companies, 
-      state.selectedCompany, 
+      state.company, 
       status
     ]
   );
