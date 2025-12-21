@@ -36,28 +36,35 @@ export const signInWithPassword = async ({ email, password }) => {
 /** **************************************
  * Sign up
  *************************************** */
-export const signUp = async ({ email, password, firstName, lastName, phone, preferences }) => {
+export const signUp = async ({ 
+  email, 
+  password, 
+  firstName, 
+  lastName, 
+  phone, 
+  companyName, 
+  companyType, 
+  companySize 
+}) => {
   const params = {
     email,
     password,
     firstName,
     lastName,
     phone,
-    preferences,
+    companyName,
+    companyType,
+    companySize,
   };
 
   try {
     const res = await axios.post(endpoints.auth.signUp, params);
 
-    const { tokens, user } = res.data.data;
+    const { user, company } = res.data.data;
 
-    if (!tokens?.accessToken) {
-      throw new Error('Access token not found in response');
-    }
-
-    await setSession(tokens.accessToken, tokens.refreshToken);
-
-    return { user, tokens };
+    // Note: User needs to verify email before they can sign in
+    // So we don't set session tokens here
+    return { user, company };
   } catch (error) {
     console.error('Error during sign up:', error);
     throw error;

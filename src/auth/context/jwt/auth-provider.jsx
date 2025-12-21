@@ -107,6 +107,47 @@ export function AuthProvider({ children }) {
 
   const status = state.loading ? 'loading' : checkAuthenticated;
 
+  const signIn = useCallback(async (email, password) => {
+    const { signInWithPassword } = await import('./action');
+    const data = await signInWithPassword({ email, password });
+    await checkUserSession();
+    return data;
+  }, [checkUserSession]);
+
+  const signUp = useCallback(async (
+    email, 
+    password, 
+    firstName, 
+    lastName, 
+    phone, 
+    companyName, 
+    companyType, 
+    companySize
+  ) => {
+    const { signUp: signUpAction } = await import('./action');
+    return signUpAction({ 
+      email, 
+      password, 
+      firstName, 
+      lastName, 
+      phone, 
+      companyName, 
+      companyType, 
+      companySize 
+    });
+  }, []);
+
+  const signOut = useCallback(async () => {
+    const { signOut: signOutAction } = await import('./action');
+    await signOutAction();
+    setState({
+      user: null,
+      companies: [],
+      selectedCompany: null,
+      loading: false,
+    });
+  }, [setState]);
+
   const memoizedValue = useMemo(
     () => ({
       user: state.user
@@ -120,11 +161,24 @@ export function AuthProvider({ children }) {
       selectedCompany: state.selectedCompany,
       checkUserSession,
       switchCompany,
+      signIn,
+      signUp,
+      signOut,
       loading: status === 'loading',
       authenticated: status === 'authenticated',
       unauthenticated: status === 'unauthenticated',
     }),
-    [checkUserSession, switchCompany, state.user, state.companies, state.selectedCompany, status]
+    [
+      checkUserSession, 
+      switchCompany, 
+      signIn, 
+      signUp, 
+      signOut, 
+      state.user, 
+      state.companies, 
+      state.selectedCompany, 
+      status
+    ]
   );
 
   return <AuthContext.Provider value={memoizedValue}>{children}</AuthContext.Provider>;

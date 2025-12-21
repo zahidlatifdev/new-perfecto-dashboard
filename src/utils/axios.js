@@ -140,11 +140,12 @@ export const endpoints = {
     me: '/api/v1/auth/profile',
     signIn: '/api/v1/auth/login',
     signUp: '/api/v1/auth/register',
-    signOut: '/api/v1/auth/logout',
+    signOut: '/api/v1/auth/sign-out',
     refreshToken: '/api/v1/auth/refresh-token',
     forgotPassword: '/api/v1/auth/forgot-password',
     resetPassword: '/api/v1/auth/reset-password',
     verifyEmail: '/api/v1/auth/verify-email',
+    resendVerification: '/api/v1/auth/resend-verification',
     switchCompany: '/api/v1/auth/switch-company',
   },
   company: {

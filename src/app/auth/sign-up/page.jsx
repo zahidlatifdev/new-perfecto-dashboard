@@ -1,11 +1,11 @@
 import { CONFIG } from 'src/config-global';
 
-import { JwtSignUpView } from 'src/sections/auth/jwt';
+import { CenteredSignUpView } from 'src/sections/auth/centered';
 
 // ----------------------------------------------------------------------
 
-export const metadata = { title: `Sign up | Jwt - ${CONFIG.site.name}` };
+export const metadata = { title: `Sign up | ${CONFIG.site.name}` };
 
 export default function Page() {
-  return <JwtSignUpView />;
+  return <CenteredSignUpView />;
 }
