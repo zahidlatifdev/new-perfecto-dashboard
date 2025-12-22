@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { z as zod } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { usePlaidLink } from 'react-plaid-link';
 import toast from 'react-hot-toast';
 
@@ -28,19 +25,11 @@ import TextField from '@mui/material/TextField';
 import { useAuthContext } from 'src/auth/hooks';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
-import { Form, Field } from 'src/components/hook-form';
 import axios, { endpoints } from 'src/utils/axios';
 
 // ----------------------------------------------------------------------
 
-const ManualAccountSchema = zod.object({
-  accountName: zod.string().min(1, { message: 'Account name is required!' }),
-  accountType: zod.string().min(1, { message: 'Account type is required!' }),
-  accountNumber: zod.string().optional(),
-  institutionName: zod.string().optional(),
-  openingBalance: zod.string().optional(),
-});
-
+// Account types for display only
 const ACCOUNT_TYPES = [
   { value: 'bank_account', label: 'Bank Account' },
   { value: 'credit_line', label: 'Credit Line/Card' },
@@ -54,38 +43,26 @@ export function AccountsView() {
 
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showManualDialog, setShowManualDialog] = useState(false);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [showAutoSyncDialog, setShowAutoSyncDialog] = useState(false);
   const [selectedSyncAccount, setSelectedSyncAccount] = useState(null);
+  const [selectedAutoSyncAccount, setSelectedAutoSyncAccount] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [linkToken, setLinkToken] = useState(null);
   const [plaidLoading, setPlaidLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
-  
+  const [syncStatus, setSyncStatus] = useState({});
+  const [autoSyncLoading, setAutoSyncLoading] = useState(false);
+  const [autoSyncSettings, setAutoSyncSettings] = useState({
+    enabled: false,
+    frequency: 'daily'
+  });
+
   // Date range for sync (default: Jan 1 of current year to today)
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-
-  const defaultValues = {
-    accountName: '',
-    accountType: '',
-    accountNumber: '',
-    institutionName: '',
-    openingBalance: '0',
-  };
-
-  const methods = useForm({
-    resolver: zodResolver(ManualAccountSchema),
-    defaultValues,
-  });
-
-  const {
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-  } = methods;
 
   const fetchAccounts = useCallback(async () => {
     if (!company?._id) return;
@@ -176,29 +153,6 @@ export function AccountsView() {
     }
   }, [linkToken, ready, open]);
 
-  const onSubmitManual = handleSubmit(async (data) => {
-    try {
-      setErrorMsg('');
-
-      await axios.post(endpoints.accounts.create, {
-        companyId: company._id,
-        accountName: data.accountName,
-        accountType: data.accountType,
-        accountNumber: data.accountNumber || null,
-        institutionName: data.institutionName || null,
-        openingBalance: parseFloat(data.openingBalance) || 0,
-        isPlaidLinked: false,
-        isActive: true,
-      });
-
-      setShowManualDialog(false);
-      reset();
-      fetchAccounts();
-    } catch (error) {
-      console.error('Failed to create account:', error);
-      setErrorMsg(error.response?.data?.message || 'Failed to create account');
-    }
-  });
 
   const handleUnlinkAccount = async (accountId) => {
     if (!confirm('Are you sure you want to unlink this account?')) return;
@@ -217,33 +171,140 @@ export function AccountsView() {
     setShowSyncDialog(true);
   };
 
+  // Check sync status for an account
+  const checkSyncStatus = useCallback(async (accountId) => {
+    try {
+      const response = await axios.get(endpoints.plaid.syncStatus(accountId));
+      if (response.data.success) {
+        setSyncStatus(prev => ({
+          ...prev,
+          [accountId]: response.data
+        }));
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Failed to check sync status:', error);
+    }
+  }, []);
+
+  // Poll sync status while syncing
+  useEffect(() => {
+    const syncingAccounts = accounts.filter(
+      acc => acc.isPlaidLinked && syncStatus[acc._id]?.syncStatus === 'syncing'
+    );
+
+    if (syncingAccounts.length === 0) return;
+
+    const interval = setInterval(() => {
+      syncingAccounts.forEach(acc => {
+        checkSyncStatus(acc._id);
+      });
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [accounts, syncStatus, checkSyncStatus]);
+
+  // Load sync status for all Plaid accounts on mount
+  useEffect(() => {
+    accounts.filter(acc => acc.isPlaidLinked).forEach(acc => {
+      checkSyncStatus(acc._id);
+    });
+  }, [accounts, checkSyncStatus]);
+
   const handleSyncAccount = async () => {
     if (!selectedSyncAccount) return;
+
+    // Check if already syncing
+    const status = syncStatus[selectedSyncAccount._id];
+    if (status?.syncStatus === 'syncing') {
+      toast.error('Sync already in progress. Please wait...');
+      return;
+    }
 
     try {
       setSyncLoading(true);
       setErrorMsg('');
-      
+
       const response = await axios.post(endpoints.plaid.sync(selectedSyncAccount._id), {
         startDate,
         endDate,
       });
-      
+
       if (response.data.success) {
         toast.success(response.data.message || `Fetched ${response.data.count} transactions from Plaid!`);
         setShowSyncDialog(false);
-        
-        // Wait a bit then refresh accounts to show updated sync time
+
+        // Update sync status
+        setSyncStatus(prev => ({
+          ...prev,
+          [selectedSyncAccount._id]: {
+            syncStatus: 'syncing',
+            syncProgress: response.data.syncProgress
+          }
+        }));
+
+        // Start polling for status
         setTimeout(() => {
-          fetchAccounts();
+          checkSyncStatus(selectedSyncAccount._id);
         }, 2000);
       }
     } catch (error) {
       console.error('Failed to sync account:', error);
-      setErrorMsg(error.message || 'Failed to sync account');
-      toast.error(error.message || 'Failed to sync account');
+      const errorMessage = error.message || 'Failed to sync account';
+
+      if (error.syncStatus === 'syncing') {
+        toast.error('Sync already in progress. Please wait for it to complete.');
+      } else {
+        setErrorMsg(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
       setSyncLoading(false);
+    }
+  };
+
+  // Handle auto-sync configuration
+  const handleOpenAutoSyncDialog = (account) => {
+    setSelectedAutoSyncAccount(account);
+
+    // Load current auto-sync settings
+    const status = syncStatus[account._id];
+    if (status?.autoSync) {
+      setAutoSyncSettings({
+        enabled: status.autoSync.enabled || false,
+        frequency: status.autoSync.frequency || 'daily'
+      });
+    } else {
+      setAutoSyncSettings({ enabled: false, frequency: 'daily' });
+    }
+
+    setShowAutoSyncDialog(true);
+  };
+
+  const handleConfigureAutoSync = async () => {
+    if (!selectedAutoSyncAccount) return;
+
+    try {
+      setAutoSyncLoading(true);
+
+      const response = await axios.post(
+        endpoints.plaid.autoSync(selectedAutoSyncAccount._id),
+        autoSyncSettings
+      );
+
+      if (response.data.success) {
+        toast.success(response.data.message);
+        setShowAutoSyncDialog(false);
+
+        // Update sync status with new auto-sync settings
+        await checkSyncStatus(selectedAutoSyncAccount._id);
+        fetchAccounts();
+      }
+    } catch (error) {
+      console.error('Failed to configure auto-sync:', error);
+      toast.error(error.message || 'Failed to configure auto-sync');
+    } finally {
+      setAutoSyncLoading(false);
     }
   };
 
@@ -271,24 +332,15 @@ export function AccountsView() {
             </Typography>
           </div>
 
-          <Stack direction="row" spacing={2}>
-            <LoadingButton
-              variant="contained"
-              color="primary"
-              startIcon={plaidLoading ? <CircularProgress size={20} /> : <Iconify icon="simple-icons:plaid" />}
-              onClick={handleConnectPlaid}
-              loading={plaidLoading}
-            >
-              {plaidLoading ? 'Initializing...' : 'Connect with Plaid'}
-            </LoadingButton>
-            <Button
-              variant="outlined"
-              startIcon={<Iconify icon="eva:plus-fill" />}
-              onClick={() => setShowManualDialog(true)}
-            >
-              Add Manually
-            </Button>
-          </Stack>
+          <LoadingButton
+            variant="contained"
+            color="primary"
+            startIcon={plaidLoading ? <CircularProgress size={20} /> : <Iconify icon="simple-icons:plaid" />}
+            onClick={handleConnectPlaid}
+            loading={plaidLoading}
+          >
+            {plaidLoading ? 'Initializing...' : 'Connect with Plaid'}
+          </LoadingButton>
         </Stack>
 
         {!!errorMsg && (
@@ -364,24 +416,53 @@ export function AccountsView() {
                             account.accountType}
                         </Typography>
                         {account.isPlaidLinked && (
-                          <Stack direction="row" alignItems="center" spacing={0.5}>
-                            <Iconify icon="simple-icons:plaid" width={12} />
-                            <Typography variant="caption" color="success.main">
-                              Plaid Connected
-                            </Typography>
+                          <Stack spacing={0.5}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <Iconify icon="simple-icons:plaid" width={12} />
+                              <Typography variant="caption" color="success.main">
+                                Plaid Connected
+                              </Typography>
+                            </Stack>
+                            {syncStatus[account._id]?.autoSync?.enabled && (
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <Iconify icon="eva:clock-outline" width={12} />
+                                <Typography variant="caption" color="info.main">
+                                  Auto-Sync: {syncStatus[account._id].autoSync.frequency}
+                                </Typography>
+                              </Stack>
+                            )}
                           </Stack>
                         )}
                       </Stack>
 
                       {account.isPlaidLinked && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<Iconify icon="eva:refresh-outline" />}
-                          onClick={() => handleOpenSyncDialog(account)}
-                        >
-                          Sync Transactions
-                        </Button>
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={
+                              syncStatus[account._id]?.syncStatus === 'syncing' ? (
+                                <CircularProgress size={16} />
+                              ) : (
+                                <Iconify icon="eva:refresh-outline" />
+                              )
+                            }
+                            onClick={() => handleOpenSyncDialog(account)}
+                            disabled={syncStatus[account._id]?.syncStatus === 'syncing'}
+                          >
+                            {syncStatus[account._id]?.syncStatus === 'syncing'
+                              ? 'Syncing...'
+                              : 'Sync Transactions'}
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="text"
+                            startIcon={<Iconify icon="eva:settings-2-outline" />}
+                            onClick={() => handleOpenAutoSyncDialog(account)}
+                          >
+                            Auto-Sync
+                          </Button>
+                        </>
                       )}
                     </Stack>
                   </CardContent>
@@ -395,7 +476,7 @@ export function AccountsView() {
       {/* Sync Transactions Dialog */}
       <Dialog
         open={showSyncDialog}
-        onClose={() => setShowSyncDialog(false)}
+        onClose={() => !syncLoading && setShowSyncDialog(false)}
         maxWidth="sm"
         fullWidth
       >
@@ -425,77 +506,102 @@ export function AccountsView() {
               inputProps={{ max: new Date().toISOString().split('T')[0] }}
             />
 
-            {selectedSyncAccount?.plaidIntegrationId?.lastSync && (
+            {syncStatus[selectedSyncAccount?._id]?.lastSync && (
               <Typography variant="caption" color="text.secondary">
-                Last synced: {new Date(selectedSyncAccount.plaidIntegrationId.lastSync).toLocaleString()}
+                Last synced: {new Date(syncStatus[selectedSyncAccount._id].lastSync).toLocaleString()}
               </Typography>
+            )}
+
+            {syncStatus[selectedSyncAccount?._id]?.syncStatus === 'syncing' && (
+              <Alert severity="info" icon={<CircularProgress size={20} />}>
+                {syncStatus[selectedSyncAccount._id].syncProgress?.currentStep || 'Syncing in progress...'}
+              </Alert>
             )}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowSyncDialog(false)} color="inherit">
+          <Button onClick={() => setShowSyncDialog(false)} color="inherit" disabled={syncLoading}>
             Cancel
           </Button>
-          <LoadingButton onClick={handleSyncAccount} variant="contained" loading={syncLoading}>
+          <LoadingButton
+            onClick={handleSyncAccount}
+            variant="contained"
+            loading={syncLoading}
+            disabled={syncStatus[selectedSyncAccount?._id]?.syncStatus === 'syncing'}
+          >
             Sync Transactions
           </LoadingButton>
         </DialogActions>
       </Dialog>
 
-      {/* Manual Account Dialog */}
+      {/* Auto-Sync Configuration Dialog */}
       <Dialog
-        open={showManualDialog}
-        onClose={() => setShowManualDialog(false)}
+        open={showAutoSyncDialog}
+        onClose={() => setShowAutoSyncDialog(false)}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Add Account Manually</DialogTitle>
+        <DialogTitle>Configure Auto-Sync</DialogTitle>
         <DialogContent>
-          <Form methods={methods} onSubmit={onSubmitManual}>
-            <Stack spacing={3} sx={{ mt: 2 }}>
-              <Field.Text name="accountName" label="Account Name" InputLabelProps={{ shrink: true }} />
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <Alert severity="info">
+              Automatically sync transactions at scheduled intervals. Syncing occurs at midnight based on the selected frequency.
+            </Alert>
 
-              <Field.Select name="accountType" label="Account Type" InputLabelProps={{ shrink: true }}>
-                <MenuItem value="">
-                  <em>Select account type</em>
-                </MenuItem>
-                {ACCOUNT_TYPES.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Field.Select>
-
-              <Field.Text
-                name="institutionName"
-                label="Institution Name (optional)"
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <Field.Text
-                name="accountNumber"
-                label="Account Number (optional)"
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <Field.Text
-                name="openingBalance"
-                label="Opening Balance"
-                type="number"
-                InputLabelProps={{ shrink: true }}
-              />
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Typography variant="body2">Enable Auto-Sync</Typography>
+              <Button
+                size="small"
+                variant={autoSyncSettings.enabled ? 'contained' : 'outlined'}
+                onClick={() => setAutoSyncSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
+              >
+                {autoSyncSettings.enabled ? 'Enabled' : 'Disabled'}
+              </Button>
             </Stack>
-          </Form>
+
+            {autoSyncSettings.enabled && (
+              <TextField
+                select
+                label="Frequency"
+                value={autoSyncSettings.frequency}
+                onChange={(e) => setAutoSyncSettings(prev => ({ ...prev, frequency: e.target.value }))}
+                fullWidth
+              >
+                <MenuItem value="daily">Daily (Every day at midnight)</MenuItem>
+                <MenuItem value="weekly">Weekly (Every Monday at midnight)</MenuItem>
+                <MenuItem value="monthly">Monthly (1st of every month at midnight)</MenuItem>
+              </TextField>
+            )}
+
+            {syncStatus[selectedAutoSyncAccount?._id]?.autoSync?.enabled && (
+              <Stack spacing={1}>
+                <Typography variant="caption" color="text.secondary">
+                  Current Status: {syncStatus[selectedAutoSyncAccount._id].autoSync.enabled ? 'Enabled' : 'Disabled'}
+                </Typography>
+                {syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync && (
+                  <Typography variant="caption" color="text.secondary">
+                    Last Auto-Sync: {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync).toLocaleString()}
+                  </Typography>
+                )}
+                {syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync && (
+                  <Typography variant="caption" color="text.secondary">
+                    Next Auto-Sync: {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync).toLocaleString()}
+                  </Typography>
+                )}
+              </Stack>
+            )}
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowManualDialog(false)} color="inherit">
+          <Button onClick={() => setShowAutoSyncDialog(false)} color="inherit">
             Cancel
           </Button>
-          <LoadingButton onClick={onSubmitManual} variant="contained" loading={isSubmitting}>
-            Add Account
+          <LoadingButton onClick={handleConfigureAutoSync} variant="contained" loading={autoSyncLoading}>
+            Save Settings
           </LoadingButton>
         </DialogActions>
       </Dialog>
+
     </DashboardContent>
   );
 }

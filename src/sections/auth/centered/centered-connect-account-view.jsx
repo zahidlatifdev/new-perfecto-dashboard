@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { z as zod } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { usePlaidLink } from 'react-plaid-link';
 
 import Stack from '@mui/material/Stack';
@@ -13,36 +10,14 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import Alert from '@mui/material/Alert';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import MenuItem from '@mui/material/MenuItem';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 import { useRouter, useSearchParams } from 'src/routes/hooks';
 
 import { AnimateLogo2 } from 'src/components/animate';
-import { Form, Field } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
 import axios, { endpoints } from 'src/utils/axios';
-
-// ----------------------------------------------------------------------
-
-const ManualAccountSchema = zod.object({
-    accountName: zod.string().min(1, { message: 'Account name is required!' }),
-    accountType: zod.string().min(1, { message: 'Account type is required!' }),
-    accountNumber: zod.string().optional(),
-    institutionName: zod.string().optional(),
-    openingBalance: zod.string().optional(),
-});
-
-const ACCOUNT_TYPES = [
-    { value: 'bank_account', label: 'Bank Account' },
-    { value: 'credit_line', label: 'Credit Line/Card' },
-    { value: 'loan_account', label: 'Loan Account' },
-];
 
 // ----------------------------------------------------------------------
 
@@ -53,29 +28,9 @@ export function CenteredConnectAccountView() {
 
     const [errorMsg, setErrorMsg] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showManualDialog, setShowManualDialog] = useState(false);
     const [connectedAccounts, setConnectedAccounts] = useState([]);
     const [linkToken, setLinkToken] = useState(null);
     const [companyId, setCompanyId] = useState(null);
-
-    const defaultValues = {
-        accountName: '',
-        accountType: '',
-        accountNumber: '',
-        institutionName: '',
-        openingBalance: '0',
-    };
-
-    const methods = useForm({
-        resolver: zodResolver(ManualAccountSchema),
-        defaultValues,
-    });
-
-    const {
-        handleSubmit,
-        reset,
-        formState: { isSubmitting },
-    } = methods;
 
     // Fetch user and company info to get company ID
     useEffect(() => {
@@ -166,55 +121,15 @@ export function CenteredConnectAccountView() {
         }
     }, [linkToken, ready, open]);
 
-    // Handle manual account addition
-    const onSubmitManual = handleSubmit(async (data) => {
-        try {
-            setErrorMsg('');
-
-            if (!companyId) {
-                setErrorMsg('Company information not found. Please try again.');
-                return;
-            }
-
-            await axios.post(endpoints.accounts.create, {
-                companyId,
-                accountName: data.accountName,
-                accountType: data.accountType,
-                accountNumber: data.accountNumber || null,
-                institutionName: data.institutionName || null,
-                openingBalance: parseFloat(data.openingBalance) || 0,
-                isPlaidLinked: false,
-                isActive: true,
-            });
-
-            // Add to connected accounts list
-            setConnectedAccounts((prev) => [
-                ...prev,
-                {
-                    _id: Date.now().toString(),
-                    accountName: data.accountName,
-                    accountType: data.accountType,
-                    institutionName: data.institutionName || 'Manual Entry',
-                    accountNumber: data.accountNumber || null,
-                },
-            ]);
-
-            setShowManualDialog(false);
-            reset();
-        } catch (error) {
-            console.error('Manual account error:', error);
-            setErrorMsg(error.message || 'Failed to add account');
-        }
-    });
 
     // Handle continue to dashboard
     const handleContinue = () => {
-        router.push(paths.auth.jwt.signIn);
+        router.push(paths.dashboard.root);
     };
 
     // Handle skip
     const handleSkip = () => {
-        router.push(paths.auth.jwt.signIn);
+        router.push(paths.dashboard.root);
     };
 
     const renderLogo = <AnimateLogo2 sx={{ mb: 3, mx: 'auto' }} />;
@@ -281,17 +196,6 @@ export function CenteredConnectAccountView() {
                 {loading ? 'Initializing...' : 'Connect with Plaid'}
             </LoadingButton>
 
-            <Button
-                fullWidth
-                size="large"
-                variant="outlined"
-                onClick={() => setShowManualDialog(true)}
-                disabled={!companyId}
-                startIcon={<Iconify icon="eva:plus-fill" />}
-            >
-                Add Account Manually
-            </Button>
-
             {connectedAccounts.length > 0 && (
                 <LoadingButton
                     fullWidth
@@ -301,7 +205,7 @@ export function CenteredConnectAccountView() {
                     onClick={handleContinue}
                     loading={loading}
                 >
-                    Continue to Sign In
+                    Continue to Dashboard
                 </LoadingButton>
             )}
 
@@ -318,68 +222,11 @@ export function CenteredConnectAccountView() {
         </Stack>
     );
 
-    const renderManualDialog = (
-        <Dialog
-            open={showManualDialog}
-            onClose={() => setShowManualDialog(false)}
-            maxWidth="sm"
-            fullWidth
-        >
-            <DialogTitle>Add Account Manually</DialogTitle>
-            <DialogContent>
-                <Form methods={methods} onSubmit={onSubmitManual}>
-                    <Stack spacing={3} sx={{ mt: 2 }}>
-                        <Field.Text name="accountName" label="Account Name" InputLabelProps={{ shrink: true }} />
-
-                        <Field.Select name="accountType" label="Account Type" InputLabelProps={{ shrink: true }}>
-                            <MenuItem value="">
-                                <em>Select account type</em>
-                            </MenuItem>
-                            {ACCOUNT_TYPES.map((option) => (
-                                <MenuItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </Field.Select>
-
-                        <Field.Text
-                            name="institutionName"
-                            label="Institution Name (optional)"
-                            InputLabelProps={{ shrink: true }}
-                        />
-
-                        <Field.Text
-                            name="accountNumber"
-                            label="Account Number (optional)"
-                            InputLabelProps={{ shrink: true }}
-                        />
-
-                        <Field.Text
-                            name="openingBalance"
-                            label="Opening Balance"
-                            type="number"
-                            InputLabelProps={{ shrink: true }}
-                        />
-                    </Stack>
-                </Form>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setShowManualDialog(false)} color="inherit">
-                    Cancel
-                </Button>
-                <LoadingButton onClick={onSubmitManual} variant="contained" loading={isSubmitting}>
-                    Add Account
-                </LoadingButton>
-            </DialogActions>
-        </Dialog>
-    );
-
     return (
         <>
             {renderLogo}
             {renderHead}
             {renderActions}
-            {renderManualDialog}
         </>
     );
 }

@@ -1,7 +1,6 @@
 import { paths } from 'src/routes/paths';
 import {
   MdDashboard,
-  MdFolder,
   MdAssessment,
   MdChat,
   MdAccountBalanceWallet,
@@ -24,7 +23,6 @@ export const navData = [
     items: [
       { title: 'Accounts', path: paths.dashboard.accounts, icon: <MdAccountBalanceWallet /> },
       { title: 'Transactions', path: paths.dashboard.transactions, icon: <MdReceipt /> },
-      { title: 'Document Vault', path: paths.dashboard.documents, icon: <MdFolder /> },
     ],
   },
   {

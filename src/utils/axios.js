@@ -154,30 +154,6 @@ export const endpoints = {
     updatePreferences: '/api/v1/users/preferences',
     changePassword: '/api/v1/users/change-password',
   },
-  documents: {
-    list: '/api/v1/documents/documents',
-    bank: '/api/v1/documents/document-bank',
-    get: (id) => `/api/v1/documents/documents/${id}`,
-    update: (id) => `/api/v1/documents/documents/${id}`,
-    delete: (id) => `/api/v1/documents/documents/${id}`,
-    reprocess: (id) => `/api/v1/documents/documents/${id}/reprocess`,
-    findSimilarItems: (id) => `/api/v1/documents/documents/${id}/items/similar`,
-    updateSimilarItemCategories: (id) =>
-      `/api/v1/documents/documents/${id}/items/update-similar-categories`,
-    updateItemCategory: (id) => `/api/v1/documents/documents/${id}/items/update-category`,
-
-    statements: {
-      list: '/api/v1/documents/statements',
-      get: (id) => `/api/v1/documents/statements/${id}`,
-      delete: (id) => `/api/v1/documents/statements/${id}`,
-      reprocess: (id) => `/api/v1/documents/statements/${id}/reprocess`,
-    },
-
-    upload: {
-      statement: '/api/v1/documents/upload/statements',
-      document: '/api/v1/documents/upload/documents',
-    },
-  },
   transactions: {
     list: '/api/v1/transactions',
     create: '/api/v1/transactions',
@@ -215,26 +191,6 @@ export const endpoints = {
     transactions: (id) => `/api/v1/cash-accounts/${id}/transactions`,
     balance: (id) => `/api/v1/cash-accounts/${id}/balance`,
   },
-  matching: {
-    list: '/api/v1/matching',
-    debug: '/api/v1/matching/debug',
-    testMatch: '/api/v1/matching/test-match',
-    transaction: (id) => `/api/v1/matching/transactions/${id}`,
-    document: (id) => `/api/v1/matching/documents/${id}`,
-    unmatchedDocuments: '/api/v1/matching/unmatched-documents',
-    unmatchedTransactions: '/api/v1/matching/unmatched-transactions',
-    statistics: '/api/v1/matching/statistics',
-    validate: '/api/v1/matching/validate',
-    apply: '/api/v1/matching/apply',
-    remove: '/api/v1/matching/remove',
-    bulkMatch: '/api/v1/matching/bulk-match',
-    toggleAutoMatching: '/api/v1/matching/toggle-auto-matching',
-    batchAutoMatch: '/api/v1/matching/batch-auto-match',
-    linkCreditCard: '/api/v1/matching/link-credit-card',
-    updateCreditCardAdjustment: '/api/v1/matching/update-credit-card-adjustment',
-    unlinkCreditCard: '/api/v1/matching/unlink-credit-card',
-    creditCardLinks: (statementId) => `/api/v1/matching/credit-card-links/${statementId}`,
-  },
   chat: {
     list: '/api/v1/chat',
     create: '/api/v1/chat',
@@ -252,14 +208,13 @@ export const endpoints = {
   dashboard: {
     stats: '/api/v1/dashboard/stats',
   },
-  plStatement: {
-    get: '/api/v1/pl-statement',
-  },
   plaid: {
     createLinkToken: '/api/v1/plaid/link-token',
     exchangeToken: '/api/v1/plaid/exchange-token',
     accounts: (companyId) => `/api/v1/plaid/accounts/${companyId}`,
     sync: (accountId) => `/api/v1/plaid/sync/${accountId}`,
+    syncStatus: (accountId) => `/api/v1/plaid/sync-status/${accountId}`,
+    autoSync: (accountId) => `/api/v1/plaid/auto-sync/${accountId}`,
     unlink: (accountId) => `/api/v1/plaid/unlink/${accountId}`,
     integrations: (companyId) => `/api/v1/plaid/integrations/${companyId}`,
   },
