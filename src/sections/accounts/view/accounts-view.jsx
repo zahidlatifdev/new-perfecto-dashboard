@@ -21,6 +21,7 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
+import Switch from '@mui/material/Switch';
 
 import { useAuthContext } from 'src/auth/hooks';
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -281,12 +282,15 @@ export function AccountsView() {
     setShowAutoSyncDialog(true);
   };
 
+  // Handle auto-sync configuration - API call is ONLY made here when Save button is clicked
+  // Changing the Switch or frequency selection only updates local state (autoSyncSettings)
   const handleConfigureAutoSync = async () => {
     if (!selectedAutoSyncAccount) return;
 
     try {
       setAutoSyncLoading(true);
 
+      // API call is made only when Save button is clicked
       const response = await axios.post(
         endpoints.plaid.autoSync(selectedAutoSyncAccount._id),
         autoSyncSettings
@@ -296,9 +300,19 @@ export function AccountsView() {
         toast.success(response.data.message);
         setShowAutoSyncDialog(false);
 
-        // Update sync status with new auto-sync settings
-        await checkSyncStatus(selectedAutoSyncAccount._id);
-        fetchAccounts();
+        if (response.data.autoSync) {
+          setSyncStatus(prev => ({
+            ...prev,
+            [selectedAutoSyncAccount._id]: {
+              ...prev[selectedAutoSyncAccount._id],
+              autoSync: response.data.autoSync,
+              // Preserve other sync status fields if they exist
+              syncStatus: prev[selectedAutoSyncAccount._id]?.syncStatus || 'idle',
+              syncProgress: prev[selectedAutoSyncAccount._id]?.syncProgress,
+              lastSync: prev[selectedAutoSyncAccount._id]?.lastSync,
+            }
+          }));
+        }
       }
     } catch (error) {
       console.error('Failed to configure auto-sync:', error);
@@ -328,7 +342,7 @@ export function AccountsView() {
           <div>
             <Typography variant="h4">Accounts</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-              Manage your linked accounts and add new ones
+              Connect checking accounts, credit cards, and loan accounts via Plaid
             </Typography>
           </div>
 
@@ -346,6 +360,21 @@ export function AccountsView() {
         {!!errorMsg && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErrorMsg('')}>
             {errorMsg}
+          </Alert>
+        )}
+
+        {accounts.length === 0 && !loading && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Supported Account Types
+            </Typography>
+            <Typography variant="body2">
+              • <strong>Checking Accounts:</strong> Connect your primary business checking accounts
+              <br />
+              • <strong>Credit Cards:</strong> All credit card types (bank-issued, PayPal, etc.)
+              <br />
+              • <strong>Loan Accounts:</strong> Auto, mortgage, student, business, home equity, and other loan types
+            </Typography>
           </Alert>
         )}
 
@@ -541,62 +570,235 @@ export function AccountsView() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Configure Auto-Sync</DialogTitle>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Iconify icon="eva:clock-outline" width={24} />
+            <Typography variant="h6">Configure Auto-Sync</Typography>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            <Alert severity="info">
-              Automatically sync transactions at scheduled intervals. Syncing occurs at midnight based on the selected frequency.
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <Alert severity="info" icon={<Iconify icon="eva:info-outline" />}>
+              <Typography variant="body2">
+                Automatically sync transactions at scheduled intervals. Syncing occurs at midnight based on your selected frequency.
+              </Typography>
             </Alert>
 
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Typography variant="body2">Enable Auto-Sync</Typography>
-              <Button
-                size="small"
-                variant={autoSyncSettings.enabled ? 'contained' : 'outlined'}
-                onClick={() => setAutoSyncSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
-              >
-                {autoSyncSettings.enabled ? 'Enabled' : 'Disabled'}
-              </Button>
-            </Stack>
+            {/* Enable/Disable Toggle */}
+            <Card variant="outlined" sx={{ p: 2.5 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2">Auto-Sync</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {autoSyncSettings.enabled
+                      ? 'Transactions will be synced automatically'
+                      : 'Auto-sync is currently disabled'}
+                  </Typography>
+                </Stack>
+                <Switch
+                  checked={autoSyncSettings.enabled}
+                  onChange={(e) => {
+                    // Only updates local state - no API call until Save button is clicked
+                    setAutoSyncSettings(prev => ({ ...prev, enabled: e.target.checked }));
+                  }}
+                  color="primary"
+                />
+              </Stack>
+            </Card>
 
+            {/* Frequency Selection */}
             {autoSyncSettings.enabled && (
-              <TextField
-                select
-                label="Frequency"
-                value={autoSyncSettings.frequency}
-                onChange={(e) => setAutoSyncSettings(prev => ({ ...prev, frequency: e.target.value }))}
-                fullWidth
-              >
-                <MenuItem value="daily">Daily (Every day at midnight)</MenuItem>
-                <MenuItem value="weekly">Weekly (Every Monday at midnight)</MenuItem>
-                <MenuItem value="monthly">Monthly (1st of every month at midnight)</MenuItem>
-              </TextField>
+              <Stack spacing={2}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Sync Frequency
+                </Typography>
+                <Stack spacing={1.5}>
+                  <Card
+                    variant={autoSyncSettings.frequency === 'daily' ? 'outlined' : 'outlined'}
+                    sx={{
+                      p: 2,
+                      cursor: 'pointer',
+                      border: autoSyncSettings.frequency === 'daily' ? 2 : 1,
+                      borderColor: autoSyncSettings.frequency === 'daily' ? 'primary.main' : 'divider',
+                      bgcolor: autoSyncSettings.frequency === 'daily' ? 'action.selected' : 'transparent',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                    onClick={() => {
+                      // Only updates local state - no API call until Save button is clicked
+                      setAutoSyncSettings(prev => ({ ...prev, frequency: 'daily' }));
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      <Iconify
+                        icon="eva:calendar-outline"
+                        width={24}
+                        sx={{ color: autoSyncSettings.frequency === 'daily' ? 'primary.main' : 'text.secondary' }}
+                      />
+                      <Stack spacing={0.5} sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2">Daily</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Every day at midnight (00:00)
+                        </Typography>
+                      </Stack>
+                      {autoSyncSettings.frequency === 'daily' && (
+                        <Iconify icon="eva:checkmark-circle-2-fill" width={24} sx={{ color: 'primary.main' }} />
+                      )}
+                    </Stack>
+                  </Card>
+
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      cursor: 'pointer',
+                      border: autoSyncSettings.frequency === 'weekly' ? 2 : 1,
+                      borderColor: autoSyncSettings.frequency === 'weekly' ? 'primary.main' : 'divider',
+                      bgcolor: autoSyncSettings.frequency === 'weekly' ? 'action.selected' : 'transparent',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                    onClick={() => {
+                      // Only updates local state - no API call until Save button is clicked
+                      setAutoSyncSettings(prev => ({ ...prev, frequency: 'weekly' }));
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      <Iconify
+                        icon="eva:calendar-outline"
+                        width={24}
+                        sx={{ color: autoSyncSettings.frequency === 'weekly' ? 'primary.main' : 'text.secondary' }}
+                      />
+                      <Stack spacing={0.5} sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2">Weekly</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Every Monday at midnight (00:00)
+                        </Typography>
+                      </Stack>
+                      {autoSyncSettings.frequency === 'weekly' && (
+                        <Iconify icon="eva:checkmark-circle-2-fill" width={24} sx={{ color: 'primary.main' }} />
+                      )}
+                    </Stack>
+                  </Card>
+
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      cursor: 'pointer',
+                      border: autoSyncSettings.frequency === 'monthly' ? 2 : 1,
+                      borderColor: autoSyncSettings.frequency === 'monthly' ? 'primary.main' : 'divider',
+                      bgcolor: autoSyncSettings.frequency === 'monthly' ? 'action.selected' : 'transparent',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                    onClick={() => {
+                      // Only updates local state - no API call until Save button is clicked
+                      setAutoSyncSettings(prev => ({ ...prev, frequency: 'monthly' }));
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      <Iconify
+                        icon="eva:calendar-outline"
+                        width={24}
+                        sx={{ color: autoSyncSettings.frequency === 'monthly' ? 'primary.main' : 'text.secondary' }}
+                      />
+                      <Stack spacing={0.5} sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2">Monthly</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          1st of every month at midnight (00:00)
+                        </Typography>
+                      </Stack>
+                      {autoSyncSettings.frequency === 'monthly' && (
+                        <Iconify icon="eva:checkmark-circle-2-fill" width={24} sx={{ color: 'primary.main' }} />
+                      )}
+                    </Stack>
+                  </Card>
+                </Stack>
+              </Stack>
             )}
 
-            {syncStatus[selectedAutoSyncAccount?._id]?.autoSync?.enabled && (
-              <Stack spacing={1}>
-                <Typography variant="caption" color="text.secondary">
-                  Current Status: {syncStatus[selectedAutoSyncAccount._id].autoSync.enabled ? 'Enabled' : 'Disabled'}
+            {/* Current Status */}
+            {syncStatus[selectedAutoSyncAccount?._id]?.autoSync && (
+              <Card variant="outlined" sx={{ p: 2.5, bgcolor: 'background.neutral' }}>
+                <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                  Current Status
                 </Typography>
-                {syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync && (
-                  <Typography variant="caption" color="text.secondary">
-                    Last Auto-Sync: {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync).toLocaleString()}
-                  </Typography>
-                )}
-                {syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync && (
-                  <Typography variant="caption" color="text.secondary">
-                    Next Auto-Sync: {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync).toLocaleString()}
-                  </Typography>
-                )}
-              </Stack>
+                <Stack spacing={1.5}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">
+                      Status
+                    </Typography>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      {syncStatus[selectedAutoSyncAccount._id].autoSync.enabled ? (
+                        <>
+                          <Iconify icon="eva:checkmark-circle-2-fill" width={16} sx={{ color: 'success.main' }} />
+                          <Typography variant="body2" fontWeight="medium" color="success.main">
+                            Active
+                          </Typography>
+                        </>
+                      ) : (
+                        <>
+                          <Iconify icon="eva:close-circle-fill" width={16} sx={{ color: 'text.disabled' }} />
+                          <Typography variant="body2" fontWeight="medium" color="text.disabled">
+                            Inactive
+                          </Typography>
+                        </>
+                      )}
+                    </Stack>
+                  </Stack>
+
+                  {syncStatus[selectedAutoSyncAccount._id].autoSync.frequency && (
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        Frequency
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        {syncStatus[selectedAutoSyncAccount._id].autoSync.frequency.charAt(0).toUpperCase() +
+                          syncStatus[selectedAutoSyncAccount._id].autoSync.frequency.slice(1)}
+                      </Typography>
+                    </Stack>
+                  )}
+
+                  {syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync && (
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        Last Sync
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync).toLocaleString()}
+                      </Typography>
+                    </Stack>
+                  )}
+
+                  {syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync && (
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        Next Sync
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium" color="primary.main">
+                        {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync).toLocaleString()}
+                      </Typography>
+                    </Stack>
+                  )}
+                </Stack>
+              </Card>
             )}
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowAutoSyncDialog(false)} color="inherit">
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setShowAutoSyncDialog(false)} color="inherit" size="large">
             Cancel
           </Button>
-          <LoadingButton onClick={handleConfigureAutoSync} variant="contained" loading={autoSyncLoading}>
+          <LoadingButton
+            onClick={handleConfigureAutoSync}
+            variant="contained"
+            loading={autoSyncLoading}
+            size="large"
+          >
             Save Settings
           </LoadingButton>
         </DialogActions>

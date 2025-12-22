@@ -6,6 +6,7 @@ import {
   MdAccountBalanceWallet,
   MdReceipt,
   MdGroups,
+  MdBusiness,
   MdSettings,
 } from 'react-icons/md';
 
@@ -28,8 +29,9 @@ export const navData = [
   {
     subheader: 'Settings',
     items: [
+      { title: 'Company', path: paths.dashboard.company, icon: <MdBusiness /> },
       { title: 'Team', path: paths.dashboard.team, icon: <MdGroups /> },
-      { title: 'Settings', path: paths.dashboard.settings, icon: <MdSettings /> },
+      { title: 'Profile', path: paths.dashboard.settings, icon: <MdSettings /> },
     ],
   },
 ];

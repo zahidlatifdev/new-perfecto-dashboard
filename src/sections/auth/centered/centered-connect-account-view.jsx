@@ -138,8 +138,11 @@ export function CenteredConnectAccountView() {
         <Stack alignItems="center" spacing={1.5} sx={{ mb: 4 }}>
             <Typography variant="h5">Connect Your Accounts</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-                Link your bank accounts, credit cards, or loans to get started. You can also skip this step
+                Link your checking accounts, credit cards, or loan accounts to get started. You can also skip this step
                 and add accounts later.
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.disabled', textAlign: 'center', mt: 1 }}>
+                Supported: Checking accounts, Credit cards, All loan types (auto, mortgage, student, etc.)
             </Typography>
         </Stack>
     );

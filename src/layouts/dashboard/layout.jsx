@@ -93,15 +93,7 @@ export function DashboardLayout({ sx, children, data }) {
                 helpLink: false,
               }}
               slots={{
-                topArea: (mappedWorkspaces.length === 0 ? (
-                  <Alert severity="info" sx={{ borderRadius: 0 }}>
-                    You have no companies. Please create or join a company to get started.
-                  </Alert>
-                ) : (
-                  <Alert severity="info" sx={{ display: 'none', borderRadius: 0 }}>
-                    This is an info Alert.
-                  </Alert>
-                )),
+                
                 bottomArea: isNavHorizontal ? (
                   <NavHorizontal
                     data={navData}
