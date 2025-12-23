@@ -160,6 +160,8 @@ export const endpoints = {
     get: (id) => `/api/v1/transactions/${id}`,
     update: (id) => `/api/v1/transactions/${id}`,
     delete: (id) => `/api/v1/transactions/${id}`,
+    categories: '/api/v1/transactions/categories',
+    updateSimilar: (id) => `/api/v1/transactions/${id}/update-similar-categories`,
     import: '/api/v1/transactions/import',
     stats: '/api/v1/transactions/stats',
     liabilities: '/api/v1/transactions/liabilities',

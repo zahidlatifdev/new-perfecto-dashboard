@@ -200,7 +200,7 @@ export function AccountsView() {
       syncingAccounts.forEach(acc => {
         checkSyncStatus(acc._id);
       });
-    }, 3000); // Poll every 3 seconds
+    }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
   }, [accounts, syncStatus, checkSyncStatus]);

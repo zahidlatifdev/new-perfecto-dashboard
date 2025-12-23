@@ -212,8 +212,7 @@ export function PLStatementView() {
 
     const expenseBreakdownData = {
       labels: [
-        'Business Expenses',
-        'Personal Expenses',
+        'Expenses',
         ...currentPeriod.expenses.categories
           .sort((a, b) => b.amount - a.amount)
           .slice(0, 8)
@@ -222,8 +221,7 @@ export function PLStatementView() {
       datasets: [
         {
           data: [
-            businessTotal,
-            personalTotal,
+            businessTotal + personalTotal,
             ...currentPeriod.expenses.categories
               .sort((a, b) => b.amount - a.amount)
               .slice(0, 8)
@@ -969,96 +967,48 @@ export function PLStatementView() {
               {/* Operating Expense Categories */}
               {expandedSections.operating && (
                 <>
-                  {/* Business Expenses */}
-                  {currentPeriod.expenses.business &&
-                    currentPeriod.expenses.business.categories.length > 0 && (
+                  {/* Expenses */}
+                  {((currentPeriod.expenses.business && currentPeriod.expenses.business.categories.length > 0) ||
+                    (currentPeriod.expenses.personal && currentPeriod.expenses.personal.categories.length > 0)) && (
                       <>
                         <TableRow sx={{ bgcolor: 'background.neutral' }}>
                           <TableCell sx={{ pl: 4 }}>
-                            <Typography variant="body2" fontWeight="bold" color="primary.main">
-                              Business Expenses
+                            <Typography variant="body2" fontWeight="bold" color="error.main">
+                              Expenses
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" fontWeight="bold" color="error.main">
-                              -{fCurrency(currentPeriod.expenses.business.operating)}
+                              -{fCurrency(
+                                (currentPeriod.expenses.business?.operating || 0) +
+                                (currentPeriod.expenses.personal?.operating || 0)
+                              )}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                               {fPercent(
-                                (currentPeriod.expenses.business.operating /
-                                  currentPeriod.revenue.total) *
+                                ((currentPeriod.expenses.business?.operating || 0) +
+                                 (currentPeriod.expenses.personal?.operating || 0)) /
+                                  currentPeriod.revenue.total *
                                   100
                               )}
                             </Typography>
                           </TableCell>
                         </TableRow>
-                        {currentPeriod.expenses.business.categories
+                        {[
+                          ...(currentPeriod.expenses.business?.categories || []),
+                          ...(currentPeriod.expenses.personal?.categories || [])
+                        ]
                           .filter(
                             (cat) =>
                               !cat.name.toLowerCase().includes('cogs') &&
                               !isNonOperatingExpense(cat.name)
                           )
+                          .sort((a, b) => b.amount - a.amount)
                           .map((category) => (
                             <TableRow
-                              key={`business-${category.name}`}
-                              sx={{ bgcolor: 'background.paper' }}
-                            >
-                              <TableCell sx={{ pl: 8 }}>
-                                <Typography variant="body2" color="text.primary">
-                                  {category.name}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right">
-                                <Typography variant="body2" color="error.main">
-                                  -{fCurrency(category.amount)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right">
-                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                  {fPercent((category.amount / currentPeriod.revenue.total) * 100)}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </>
-                    )}
-
-                  {/* Personal Expenses */}
-                  {currentPeriod.expenses.personal &&
-                    currentPeriod.expenses.personal.categories.length > 0 && (
-                      <>
-                        <TableRow sx={{ bgcolor: 'background.neutral' }}>
-                          <TableCell sx={{ pl: 4 }}>
-                            <Typography variant="body2" fontWeight="bold" color="warning.main">
-                              Personal Expenses
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" fontWeight="bold" color="error.main">
-                              -{fCurrency(currentPeriod.expenses.personal.operating)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                              {fPercent(
-                                (currentPeriod.expenses.personal.operating /
-                                  currentPeriod.revenue.total) *
-                                  100
-                              )}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                        {currentPeriod.expenses.personal.categories
-                          .filter(
-                            (cat) =>
-                              !cat.name.toLowerCase().includes('cogs') &&
-                              !isNonOperatingExpense(cat.name)
-                          )
-                          .map((category) => (
-                            <TableRow
-                              key={`personal-${category.name}`}
+                              key={`expense-${category.name}`}
                               sx={{ bgcolor: 'background.paper' }}
                             >
                               <TableCell sx={{ pl: 8 }}>

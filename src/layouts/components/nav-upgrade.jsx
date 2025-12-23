@@ -25,7 +25,7 @@ export function NavUpgrade({ sx, ...other }) {
     <Stack sx={{ px: 2, py: 5, textAlign: 'center', ...sx }} {...other}>
       <Stack alignItems="center">
       <Box sx={{ width: 1 }}>
-          <UpgradeBlock compact />
+          <UpgradeBlock />
         </Box>
       </Stack>
     </Stack>

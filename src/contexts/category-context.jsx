@@ -35,8 +35,7 @@ const categoryReducer = (state, action) => {
       return {
         ...state,
         categories: [...state.categories, action.payload].sort((a, b) => {
-          if (a.isMain !== b.isMain) return b.isMain - a.isMain;
-          if (a.mainCategory !== b.mainCategory) return a.mainCategory.localeCompare(b.mainCategory);
+          if (a.type !== b.type) return a.type.localeCompare(b.type);
           return a.name.localeCompare(b.name);
         })
       };

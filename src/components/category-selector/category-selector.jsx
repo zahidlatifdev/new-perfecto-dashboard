@@ -31,7 +31,6 @@ const CategorySelector = memo(function CategorySelector({
   value,
   onChange,
   transactionType = null,
-  isPersonal = false,
   label = 'Category',
   fullWidth = true,
   size = 'small',
@@ -47,7 +46,7 @@ const CategorySelector = memo(function CategorySelector({
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [newCategoryForm, setNewCategoryForm] = useState({
     name: '',
-    mainCategory: 'Business Expenses',
+    type: 'Expense',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -65,7 +64,7 @@ const CategorySelector = memo(function CategorySelector({
       setAddDialogOpen(false);
       setNewCategoryForm({
         name: '',
-        mainCategory: 'Business Expenses',
+        type: 'Expense',
       });
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create category');
@@ -110,22 +109,18 @@ const CategorySelector = memo(function CategorySelector({
 
     let filteredCategories = categories;
 
-    // Filter by transaction type
+    // Filter by transaction type - show Expense for debits, Income for credits
     if (transactionType) {
       if (transactionType === 'credit') {
+        // Show Income categories for credits
         filteredCategories = categories.filter(
-          (cat) => cat.mainCategory === 'Income' || cat.name === 'Uncategorized'
+          (cat) => cat.type === 'Income' || cat.name === 'Uncategorized'
         );
       } else {
-        if (isPersonal) {
-          filteredCategories = categories.filter(
-            (cat) => cat.mainCategory === 'Personal Expenses' || cat.name === 'Uncategorized'
-          );
-        } else {
-          filteredCategories = categories.filter(
-            (cat) => cat.mainCategory === 'Business Expenses' || cat.name === 'Uncategorized'
-          );
-        }
+        // Show Expense categories for debits
+        filteredCategories = categories.filter(
+          (cat) => cat.type === 'Expense' || cat.name === 'Uncategorized'
+        );
       }
     }
 
@@ -140,17 +135,16 @@ const CategorySelector = memo(function CategorySelector({
 
     // Group categories
     const grouped = {
-      'Business Expenses': [],
-      'Personal Expenses': [],
+      Expense: [],
       Income: [],
       Uncategorized: [],
       Other: [],
     };
 
     filteredCategories.forEach((category) => {
-      if (category.mainCategory && grouped[category.mainCategory]) {
-        grouped[category.mainCategory].push(category);
-      } else if (category.name === 'Uncategorized' || category.mainCategory === 'Uncategorized') {
+      if (category.type && grouped[category.type]) {
+        grouped[category.type].push(category);
+      } else if (category.name === 'Uncategorized') {
         grouped.Uncategorized.push(category);
       } else {
         // Put other categories in Other group
@@ -161,17 +155,9 @@ const CategorySelector = memo(function CategorySelector({
     // Create flat array with headers for rendering
     const items = [];
 
-    if (grouped['Business Expenses'].length > 0) {
-      items.push({ type: 'header', key: 'business-header', label: 'Business Expenses' });
-      grouped['Business Expenses'].forEach((cat) => {
-        items.push({ type: 'item', key: cat._id || cat.name, category: cat });
-      });
-    }
-
-    if (grouped['Personal Expenses'].length > 0) {
-      if (items.length > 0) items.push({ type: 'divider', key: 'personal-divider' });
-      items.push({ type: 'header', key: 'personal-header', label: 'Personal Expenses' });
-      grouped['Personal Expenses'].forEach((cat) => {
+    if (grouped['Expense'].length > 0) {
+      items.push({ type: 'header', key: 'expense-header', label: 'Expense' });
+      grouped['Expense'].forEach((cat) => {
         items.push({ type: 'item', key: cat._id || cat.name, category: cat });
       });
     }
@@ -207,7 +193,7 @@ const CategorySelector = memo(function CategorySelector({
     }
 
     return { items };
-  }, [categories, transactionType, isPersonal, showAddOption]);
+  }, [categories, transactionType, showAddOption]);
 
   // Memoize the change handler
   const handleChange = useMemo(
@@ -346,16 +332,15 @@ const CategorySelector = memo(function CategorySelector({
           />
 
           <FormControl fullWidth margin="normal" size="small">
-            <InputLabel>Main Category</InputLabel>
+            <InputLabel>Type</InputLabel>
             <Select
-              value={newCategoryForm.mainCategory}
+              value={newCategoryForm.type}
               onChange={(e) =>
-                setNewCategoryForm((prev) => ({ ...prev, mainCategory: e.target.value }))
+                setNewCategoryForm((prev) => ({ ...prev, type: e.target.value }))
               }
-              label="Main Category"
+              label="Type"
             >
-              <MenuItem value="Business Expenses">Business Expenses</MenuItem>
-              <MenuItem value="Personal Expenses">Personal Expenses</MenuItem>
+              <MenuItem value="Expense">Expense</MenuItem>
               <MenuItem value="Income">Income</MenuItem>
             </Select>
           </FormControl>
