@@ -217,7 +217,7 @@ export const endpoints = {
     sync: (accountId) => `/api/v1/plaid/sync/${accountId}`,
     syncStatus: (accountId) => `/api/v1/plaid/sync-status/${accountId}`,
     autoSync: (accountId) => `/api/v1/plaid/auto-sync/${accountId}`,
-    unlink: (accountId) => `/api/v1/plaid/unlink/${accountId}`,
+    disconnect: (accountId) => `/api/v1/plaid/disconnect/${accountId}`,
     integrations: (companyId) => `/api/v1/plaid/integrations/${companyId}`,
   },
   accounts: {

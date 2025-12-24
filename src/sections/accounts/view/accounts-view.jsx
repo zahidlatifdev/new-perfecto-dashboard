@@ -17,6 +17,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
 import LoadingButton from '@mui/lab/LoadingButton';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -57,6 +59,10 @@ export function AccountsView() {
   const [autoSyncSettings, setAutoSyncSettings] = useState({
     enabled: false,
     frequency: 'daily'
+  });
+  const [unlinkDialog, setUnlinkDialog] = useState({
+    open: false,
+    account: null,
   });
 
   // Date range for sync (default: Jan 1 of current year to today)
@@ -155,15 +161,35 @@ export function AccountsView() {
   }, [linkToken, ready, open]);
 
 
-  const handleUnlinkAccount = async (accountId) => {
-    if (!confirm('Are you sure you want to unlink this account?')) return;
+  const handleOpenUnlinkDialog = (account) => {
+    setUnlinkDialog({
+      open: true,
+      account,
+    });
+  };
+
+  const handleCloseUnlinkDialog = () => {
+    setUnlinkDialog({
+      open: false,
+      account: null,
+    });
+  };
+
+  const handleConfirmDisconnect = async () => {
+    const { account } = unlinkDialog;
+    if (!account) return;
 
     try {
-      await axios.delete(endpoints.accounts.delete(accountId));
+      setLoading(true);
+      await axios.delete(endpoints.plaid.disconnect(account._id));
+      toast.success('Account disconnected successfully');
+      handleCloseUnlinkDialog();
       fetchAccounts();
     } catch (error) {
-      console.error('Failed to unlink account:', error);
-      setErrorMsg(error.message || 'Failed to unlink account');
+      console.error('Failed to disconnect account:', error);
+      toast.error(error.response?.data?.message || 'Failed to disconnect account');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -421,13 +447,16 @@ export function AccountsView() {
                           <Iconify icon={getAccountIcon(account.accountType)} width={32} />
                           <Typography variant="subtitle1">{account.accountName}</Typography>
                         </Stack>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleUnlinkAccount(account._id)}
-                        >
-                          <Iconify icon="eva:trash-2-outline" />
-                        </IconButton>
+                        <Tooltip title="Disconnect account">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleOpenUnlinkDialog(account)}
+                            disabled={loading}
+                          >
+                            <Iconify icon="eva:power-outline" />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
 
                       <Stack spacing={1}>
@@ -800,6 +829,66 @@ export function AccountsView() {
             size="large"
           >
             Save Settings
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Disconnect Account Confirmation Dialog */}
+      <Dialog open={unlinkDialog.open} onClose={handleCloseUnlinkDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="eva:alert-triangle-outline" width={24} color="error.main" />
+            <Typography variant="h6" color="error.main">
+              Disconnect Account
+            </Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography>
+              Are you sure you want to disconnect <strong>{unlinkDialog.account?.accountName}</strong>?
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              This will disconnect all accounts linked to the same institution.
+            </Typography>
+
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              <Typography variant="body2">
+                <strong>This action cannot be undone.</strong> Disconnecting will:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+                <li>Remove the account from Plaid (stops all billing)</li>
+                <li>Delete all associated transactions</li>
+                <li>Deactivate the account and integration data</li>
+                <li>Securely clear all stored credentials</li>
+              </Box>
+            </Alert>
+
+            <Alert severity="info">
+              <Typography variant="body2">
+                <strong>Note:</strong> You can reconnect this account later if needed, but historical transactions will need to be synced again.
+              </Typography>
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={handleCloseUnlinkDialog}
+            color="inherit"
+            size="large"
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <LoadingButton
+            onClick={handleConfirmDisconnect}
+            variant="contained"
+            color="error"
+            loading={loading}
+            size="large"
+            startIcon={<Iconify icon="eva:trash-2-outline" />}
+          >
+            Disconnect Account
           </LoadingButton>
         </DialogActions>
       </Dialog>
