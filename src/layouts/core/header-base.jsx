@@ -116,7 +116,7 @@ export function HeaderBase({
               }}
             >
               {/* -- Help link -- */}
-              {helpLink && (
+              {/* {helpLink && (
                 <Link
                   data-slot="help-link"
                   href={paths.faqs}
@@ -126,7 +126,7 @@ export function HeaderBase({
                 >
                   Need help?
                 </Link>
-              )}
+              )} */}
 
               {/* -- Notifications popover -- */}
               {/* {notifications && (

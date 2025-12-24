@@ -172,11 +172,11 @@ export function JwtSignUpView() {
       }}
     >
       {'By signing up, I agree to '}
-      <Link underline="always" color="text.primary">
+      <Link href="#" underline="always" color="text.primary">
         Terms of service
       </Link>
       {' and '}
-      <Link underline="always" color="text.primary">
+      <Link href="#" underline="always" color="text.primary">
         Privacy policy
       </Link>
       .

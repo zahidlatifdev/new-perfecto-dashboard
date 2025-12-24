@@ -149,6 +149,7 @@ export function CenteredVerifyView() {
       <Typography variant="body2" sx={{ mx: 'auto' }}>
         {`Don't have a code? `}
         <Link
+          href="#"
           variant="subtitle2"
           sx={{ cursor: 'pointer' }}
           onClick={handleResend}

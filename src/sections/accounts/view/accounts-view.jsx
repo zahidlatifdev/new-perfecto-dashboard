@@ -46,30 +46,14 @@ export function AccountsView() {
 
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showSyncDialog, setShowSyncDialog] = useState(false);
-  const [showAutoSyncDialog, setShowAutoSyncDialog] = useState(false);
-  const [selectedSyncAccount, setSelectedSyncAccount] = useState(null);
-  const [selectedAutoSyncAccount, setSelectedAutoSyncAccount] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [linkToken, setLinkToken] = useState(null);
   const [plaidLoading, setPlaidLoading] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [syncStatus, setSyncStatus] = useState({});
-  const [autoSyncLoading, setAutoSyncLoading] = useState(false);
-  const [autoSyncSettings, setAutoSyncSettings] = useState({
-    enabled: false,
-    frequency: 'daily'
-  });
-  const [unlinkDialog, setUnlinkDialog] = useState({
+  const [disconnectDialog, setDisconnectDialog] = useState({
     open: false,
     account: null,
   });
 
-  // Date range for sync (default: Jan 1 of current year to today)
-  const [startDate, setStartDate] = useState(
-    new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const fetchAccounts = useCallback(async () => {
     if (!company?._id) return;
@@ -161,29 +145,29 @@ export function AccountsView() {
   }, [linkToken, ready, open]);
 
 
-  const handleOpenUnlinkDialog = (account) => {
-    setUnlinkDialog({
+  const handleOpenDisconnectDialog = (account) => {
+    setDisconnectDialog({
       open: true,
       account,
     });
   };
 
-  const handleCloseUnlinkDialog = () => {
-    setUnlinkDialog({
+  const handleCloseDisconnectDialog = () => {
+    setDisconnectDialog({
       open: false,
       account: null,
     });
   };
 
   const handleConfirmDisconnect = async () => {
-    const { account } = unlinkDialog;
+    const { account } = disconnectDialog;
     if (!account) return;
 
     try {
       setLoading(true);
       await axios.delete(endpoints.plaid.disconnect(account._id));
       toast.success('Account disconnected successfully');
-      handleCloseUnlinkDialog();
+      handleCloseDisconnectDialog();
       fetchAccounts();
     } catch (error) {
       console.error('Failed to disconnect account:', error);
@@ -193,160 +177,8 @@ export function AccountsView() {
     }
   };
 
-  const handleOpenSyncDialog = (account) => {
-    setSelectedSyncAccount(account);
-    setShowSyncDialog(true);
-  };
 
-  // Check sync status for an account
-  const checkSyncStatus = useCallback(async (accountId) => {
-    try {
-      const response = await axios.get(endpoints.plaid.syncStatus(accountId));
-      if (response.data.success) {
-        setSyncStatus(prev => ({
-          ...prev,
-          [accountId]: response.data
-        }));
-        return response.data;
-      }
-    } catch (error) {
-      console.error('Failed to check sync status:', error);
-    }
-  }, []);
 
-  // Poll sync status while syncing
-  useEffect(() => {
-    const syncingAccounts = accounts.filter(
-      acc => acc.isPlaidLinked && syncStatus[acc._id]?.syncStatus === 'syncing'
-    );
-
-    if (syncingAccounts.length === 0) return;
-
-    const interval = setInterval(() => {
-      syncingAccounts.forEach(acc => {
-        checkSyncStatus(acc._id);
-      });
-    }, 5000); // Poll every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [accounts, syncStatus, checkSyncStatus]);
-
-  // Load sync status for all Plaid accounts on mount
-  useEffect(() => {
-    accounts.filter(acc => acc.isPlaidLinked).forEach(acc => {
-      checkSyncStatus(acc._id);
-    });
-  }, [accounts, checkSyncStatus]);
-
-  const handleSyncAccount = async () => {
-    if (!selectedSyncAccount) return;
-
-    // Check if already syncing
-    const status = syncStatus[selectedSyncAccount._id];
-    if (status?.syncStatus === 'syncing') {
-      toast.error('Sync already in progress. Please wait...');
-      return;
-    }
-
-    try {
-      setSyncLoading(true);
-      setErrorMsg('');
-
-      const response = await axios.post(endpoints.plaid.sync(selectedSyncAccount._id), {
-        startDate,
-        endDate,
-      });
-
-      if (response.data.success) {
-        toast.success(response.data.message || `Fetched ${response.data.count} transactions from Plaid!`);
-        setShowSyncDialog(false);
-
-        // Update sync status
-        setSyncStatus(prev => ({
-          ...prev,
-          [selectedSyncAccount._id]: {
-            syncStatus: 'syncing',
-            syncProgress: response.data.syncProgress
-          }
-        }));
-
-        // Start polling for status
-        setTimeout(() => {
-          checkSyncStatus(selectedSyncAccount._id);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Failed to sync account:', error);
-      const errorMessage = error.message || 'Failed to sync account';
-
-      if (error.syncStatus === 'syncing') {
-        toast.error('Sync already in progress. Please wait for it to complete.');
-      } else {
-        setErrorMsg(errorMessage);
-        toast.error(errorMessage);
-      }
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  // Handle auto-sync configuration
-  const handleOpenAutoSyncDialog = (account) => {
-    setSelectedAutoSyncAccount(account);
-
-    // Load current auto-sync settings
-    const status = syncStatus[account._id];
-    if (status?.autoSync) {
-      setAutoSyncSettings({
-        enabled: status.autoSync.enabled || false,
-        frequency: status.autoSync.frequency || 'daily'
-      });
-    } else {
-      setAutoSyncSettings({ enabled: false, frequency: 'daily' });
-    }
-
-    setShowAutoSyncDialog(true);
-  };
-
-  // Handle auto-sync configuration - API call is ONLY made here when Save button is clicked
-  // Changing the Switch or frequency selection only updates local state (autoSyncSettings)
-  const handleConfigureAutoSync = async () => {
-    if (!selectedAutoSyncAccount) return;
-
-    try {
-      setAutoSyncLoading(true);
-
-      // API call is made only when Save button is clicked
-      const response = await axios.post(
-        endpoints.plaid.autoSync(selectedAutoSyncAccount._id),
-        autoSyncSettings
-      );
-
-      if (response.data.success) {
-        toast.success(response.data.message);
-        setShowAutoSyncDialog(false);
-
-        if (response.data.autoSync) {
-          setSyncStatus(prev => ({
-            ...prev,
-            [selectedAutoSyncAccount._id]: {
-              ...prev[selectedAutoSyncAccount._id],
-              autoSync: response.data.autoSync,
-              // Preserve other sync status fields if they exist
-              syncStatus: prev[selectedAutoSyncAccount._id]?.syncStatus || 'idle',
-              syncProgress: prev[selectedAutoSyncAccount._id]?.syncProgress,
-              lastSync: prev[selectedAutoSyncAccount._id]?.lastSync,
-            }
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to configure auto-sync:', error);
-      toast.error(error.message || 'Failed to configure auto-sync');
-    } finally {
-      setAutoSyncLoading(false);
-    }
-  };
 
   const getAccountIcon = (type) => {
     switch (type) {
@@ -414,8 +246,15 @@ export function AccountsView() {
                     No Accounts Yet
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Connect your bank accounts, credit cards, or loans to get started
+                    Connect your bank accounts, credit cards, or loans via Plaid to get started
                   </Typography>
+                  {process.env.NODE_ENV !== 'production' && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography variant="body2">
+                        <strong>Sandbox Testing:</strong> When connecting, select <strong>"First Platypus Bank"</strong> (not the OAuth versions) and use credentials <code>user_transactions_dynamic</code> with any password for rich transaction data, or <code>user_good</code>/<code>pass_good</code> for basic testing.
+                      </Typography>
+                    </Alert>
+                  )}
                   <Stack direction="row" spacing={2} justifyContent="center">
                     <LoadingButton
                       variant="contained"
@@ -425,13 +264,6 @@ export function AccountsView() {
                     >
                       Connect with Plaid
                     </LoadingButton>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Iconify icon="eva:plus-fill" />}
-                      onClick={() => setShowManualDialog(true)}
-                    >
-                      Add Manually
-                    </Button>
                   </Stack>
                 </CardContent>
               </Card>
@@ -481,11 +313,12 @@ export function AccountsView() {
                                 Plaid Connected
                               </Typography>
                             </Stack>
-                            {syncStatus[account._id]?.autoSync?.enabled && (
+                            {/* Show sync status only during initial sync */}
+                            {account.plaidIntegrationId?.syncStatus === 'syncing' && (
                               <Stack direction="row" alignItems="center" spacing={0.5}>
-                                <Iconify icon="eva:clock-outline" width={12} />
-                                <Typography variant="caption" color="info.main">
-                                  Auto-Sync: {syncStatus[account._id].autoSync.frequency}
+                                <CircularProgress size={12} />
+                                <Typography variant="caption" color="warning.main">
+                                  Setting up...
                                 </Typography>
                               </Stack>
                             )}
@@ -494,33 +327,16 @@ export function AccountsView() {
                       </Stack>
 
                       {account.isPlaidLinked && (
-                        <>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={
-                              syncStatus[account._id]?.syncStatus === 'syncing' ? (
-                                <CircularProgress size={16} />
-                              ) : (
-                                <Iconify icon="eva:refresh-outline" />
-                              )
-                            }
-                            onClick={() => handleOpenSyncDialog(account)}
-                            disabled={syncStatus[account._id]?.syncStatus === 'syncing'}
-                          >
-                            {syncStatus[account._id]?.syncStatus === 'syncing'
-                              ? 'Syncing...'
-                              : 'Sync Transactions'}
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="text"
-                            startIcon={<Iconify icon="eva:settings-2-outline" />}
-                            onClick={() => handleOpenAutoSyncDialog(account)}
-                          >
-                            Auto-Sync
-                          </Button>
-                        </>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          startIcon={<Iconify icon="eva:power-outline" />}
+                          onClick={() => handleOpenDisconnectDialog(account)}
+                          disabled={loading}
+                        >
+                          Disconnect
+                        </Button>
                       )}
                     </Stack>
                   </CardContent>
@@ -531,310 +347,16 @@ export function AccountsView() {
         </Grid>
       </Container>
 
-      {/* Sync Transactions Dialog */}
-      <Dialog
-        open={showSyncDialog}
-        onClose={() => !syncLoading && setShowSyncDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Sync Transactions</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            <Alert severity="info">
-              Select the date range for transactions you want to sync from Plaid.
-            </Alert>
-
-            <TextField
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-
-            <TextField
-              label="End Date"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              inputProps={{ max: new Date().toISOString().split('T')[0] }}
-            />
-
-            {syncStatus[selectedSyncAccount?._id]?.lastSync && (
-              <Typography variant="caption" color="text.secondary">
-                Last synced: {new Date(syncStatus[selectedSyncAccount._id].lastSync).toLocaleString()}
-              </Typography>
-            )}
-
-            {syncStatus[selectedSyncAccount?._id]?.syncStatus === 'syncing' && (
-              <Alert severity="info" icon={<CircularProgress size={20} />}>
-                {syncStatus[selectedSyncAccount._id].syncProgress?.currentStep || 'Syncing in progress...'}
-              </Alert>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowSyncDialog(false)} color="inherit" disabled={syncLoading}>
-            Cancel
-          </Button>
-          <LoadingButton
-            onClick={handleSyncAccount}
-            variant="contained"
-            loading={syncLoading}
-            disabled={syncStatus[selectedSyncAccount?._id]?.syncStatus === 'syncing'}
-          >
-            Sync Transactions
-          </LoadingButton>
-        </DialogActions>
-      </Dialog>
-
-      {/* Auto-Sync Configuration Dialog */}
-      <Dialog
-        open={showAutoSyncDialog}
-        onClose={() => setShowAutoSyncDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Iconify icon="eva:clock-outline" width={24} />
-            <Typography variant="h6">Configure Auto-Sync</Typography>
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <Alert severity="info" icon={<Iconify icon="eva:info-outline" />}>
-              <Typography variant="body2">
-                Automatically sync transactions at scheduled intervals. Syncing occurs at midnight based on your selected frequency.
-              </Typography>
-            </Alert>
-
-            {/* Enable/Disable Toggle */}
-            <Card variant="outlined" sx={{ p: 2.5 }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">Auto-Sync</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {autoSyncSettings.enabled
-                      ? 'Transactions will be synced automatically'
-                      : 'Auto-sync is currently disabled'}
-                  </Typography>
-                </Stack>
-                <Switch
-                  checked={autoSyncSettings.enabled}
-                  onChange={(e) => {
-                    // Only updates local state - no API call until Save button is clicked
-                    setAutoSyncSettings(prev => ({ ...prev, enabled: e.target.checked }));
-                  }}
-                  color="primary"
-                />
-              </Stack>
-            </Card>
-
-            {/* Frequency Selection */}
-            {autoSyncSettings.enabled && (
-              <Stack spacing={2}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  Sync Frequency
-                </Typography>
-                <Stack spacing={1.5}>
-                  <Card
-                    variant={autoSyncSettings.frequency === 'daily' ? 'outlined' : 'outlined'}
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: autoSyncSettings.frequency === 'daily' ? 2 : 1,
-                      borderColor: autoSyncSettings.frequency === 'daily' ? 'primary.main' : 'divider',
-                      bgcolor: autoSyncSettings.frequency === 'daily' ? 'action.selected' : 'transparent',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                    onClick={() => {
-                      // Only updates local state - no API call until Save button is clicked
-                      setAutoSyncSettings(prev => ({ ...prev, frequency: 'daily' }));
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Iconify
-                        icon="eva:calendar-outline"
-                        width={24}
-                        sx={{ color: autoSyncSettings.frequency === 'daily' ? 'primary.main' : 'text.secondary' }}
-                      />
-                      <Stack spacing={0.5} sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2">Daily</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Every day at midnight (00:00)
-                        </Typography>
-                      </Stack>
-                      {autoSyncSettings.frequency === 'daily' && (
-                        <Iconify icon="eva:checkmark-circle-2-fill" width={24} sx={{ color: 'primary.main' }} />
-                      )}
-                    </Stack>
-                  </Card>
-
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: autoSyncSettings.frequency === 'weekly' ? 2 : 1,
-                      borderColor: autoSyncSettings.frequency === 'weekly' ? 'primary.main' : 'divider',
-                      bgcolor: autoSyncSettings.frequency === 'weekly' ? 'action.selected' : 'transparent',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                    onClick={() => {
-                      // Only updates local state - no API call until Save button is clicked
-                      setAutoSyncSettings(prev => ({ ...prev, frequency: 'weekly' }));
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Iconify
-                        icon="eva:calendar-outline"
-                        width={24}
-                        sx={{ color: autoSyncSettings.frequency === 'weekly' ? 'primary.main' : 'text.secondary' }}
-                      />
-                      <Stack spacing={0.5} sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2">Weekly</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Every Monday at midnight (00:00)
-                        </Typography>
-                      </Stack>
-                      {autoSyncSettings.frequency === 'weekly' && (
-                        <Iconify icon="eva:checkmark-circle-2-fill" width={24} sx={{ color: 'primary.main' }} />
-                      )}
-                    </Stack>
-                  </Card>
-
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: autoSyncSettings.frequency === 'monthly' ? 2 : 1,
-                      borderColor: autoSyncSettings.frequency === 'monthly' ? 'primary.main' : 'divider',
-                      bgcolor: autoSyncSettings.frequency === 'monthly' ? 'action.selected' : 'transparent',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                    onClick={() => {
-                      // Only updates local state - no API call until Save button is clicked
-                      setAutoSyncSettings(prev => ({ ...prev, frequency: 'monthly' }));
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Iconify
-                        icon="eva:calendar-outline"
-                        width={24}
-                        sx={{ color: autoSyncSettings.frequency === 'monthly' ? 'primary.main' : 'text.secondary' }}
-                      />
-                      <Stack spacing={0.5} sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2">Monthly</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          1st of every month at midnight (00:00)
-                        </Typography>
-                      </Stack>
-                      {autoSyncSettings.frequency === 'monthly' && (
-                        <Iconify icon="eva:checkmark-circle-2-fill" width={24} sx={{ color: 'primary.main' }} />
-                      )}
-                    </Stack>
-                  </Card>
-                </Stack>
-              </Stack>
-            )}
-
-            {/* Current Status */}
-            {syncStatus[selectedAutoSyncAccount?._id]?.autoSync && (
-              <Card variant="outlined" sx={{ p: 2.5, bgcolor: 'background.neutral' }}>
-                <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                  Current Status
-                </Typography>
-                <Stack spacing={1.5}>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">
-                      Status
-                    </Typography>
-                    <Stack direction="row" alignItems="center" spacing={1}>
-                      {syncStatus[selectedAutoSyncAccount._id].autoSync.enabled ? (
-                        <>
-                          <Iconify icon="eva:checkmark-circle-2-fill" width={16} sx={{ color: 'success.main' }} />
-                          <Typography variant="body2" fontWeight="medium" color="success.main">
-                            Active
-                          </Typography>
-                        </>
-                      ) : (
-                        <>
-                          <Iconify icon="eva:close-circle-fill" width={16} sx={{ color: 'text.disabled' }} />
-                          <Typography variant="body2" fontWeight="medium" color="text.disabled">
-                            Inactive
-                          </Typography>
-                        </>
-                      )}
-                    </Stack>
-                  </Stack>
-
-                  {syncStatus[selectedAutoSyncAccount._id].autoSync.frequency && (
-                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">
-                        Frequency
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium">
-                        {syncStatus[selectedAutoSyncAccount._id].autoSync.frequency.charAt(0).toUpperCase() +
-                          syncStatus[selectedAutoSyncAccount._id].autoSync.frequency.slice(1)}
-                      </Typography>
-                    </Stack>
-                  )}
-
-                  {syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync && (
-                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">
-                        Last Sync
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium">
-                        {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.lastAutoSync).toLocaleString()}
-                      </Typography>
-                    </Stack>
-                  )}
-
-                  {syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync && (
-                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">
-                        Next Sync
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium" color="primary.main">
-                        {new Date(syncStatus[selectedAutoSyncAccount._id].autoSync.nextAutoSync).toLocaleString()}
-                      </Typography>
-                    </Stack>
-                  )}
-                </Stack>
-              </Card>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setShowAutoSyncDialog(false)} color="inherit" size="large">
-            Cancel
-          </Button>
-          <LoadingButton
-            onClick={handleConfigureAutoSync}
-            variant="contained"
-            loading={autoSyncLoading}
-            size="large"
-          >
-            Save Settings
-          </LoadingButton>
-        </DialogActions>
-      </Dialog>
+      {/* Disconnect Account Confirmation Dialog */}
 
       {/* Disconnect Account Confirmation Dialog */}
-      <Dialog open={unlinkDialog.open} onClose={handleCloseUnlinkDialog} maxWidth="sm" fullWidth>
+
+
+
+
+
+      {/* Disconnect Account Confirmation Dialog */}
+      <Dialog open={disconnectDialog.open} onClose={handleCloseDisconnectDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Iconify icon="eva:alert-triangle-outline" width={24} color="error.main" />
@@ -846,7 +368,7 @@ export function AccountsView() {
         <DialogContent dividers>
           <Stack spacing={2}>
             <Typography>
-              Are you sure you want to disconnect <strong>{unlinkDialog.account?.accountName}</strong>?
+              Are you sure you want to disconnect <strong>{disconnectDialog.account?.accountName}</strong>?
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               This will disconnect all accounts linked to the same institution.
@@ -873,7 +395,7 @@ export function AccountsView() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button
-            onClick={handleCloseUnlinkDialog}
+            onClick={handleCloseDisconnectDialog}
             color="inherit"
             size="large"
             disabled={loading}

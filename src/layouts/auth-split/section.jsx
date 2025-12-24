@@ -86,7 +86,7 @@ export function Section({
                   }),
                 }}
               >
-                <Tooltip title={option.label} placement="top">
+                {/* <Tooltip title={option.label} placement="top">
                   <Link
                     component={RouterLink}
                     href={option.path}
@@ -101,7 +101,7 @@ export function Section({
                       sx={{ width: 32, height: 32 }}
                     />
                   </Link>
-                </Tooltip>
+                </Tooltip> */}
               </Box>
             );
           })}
