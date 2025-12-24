@@ -248,13 +248,6 @@ export function AccountsView() {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Connect your bank accounts, credit cards, or loans via Plaid to get started
                   </Typography>
-                  {process.env.NODE_ENV !== 'production' && (
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      <Typography variant="body2">
-                        <strong>Sandbox Testing:</strong> When connecting, select <strong>"First Platypus Bank"</strong> (not the OAuth versions) and use credentials <code>user_transactions_dynamic</code> with any password for rich transaction data, or <code>user_good</code>/<code>pass_good</code> for basic testing.
-                      </Typography>
-                    </Alert>
-                  )}
                   <Stack direction="row" spacing={2} justifyContent="center">
                     <LoadingButton
                       variant="contained"

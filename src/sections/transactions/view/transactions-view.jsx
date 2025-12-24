@@ -58,7 +58,7 @@ const TABLE_HEAD = [
 
 const ACCOUNT_TYPE_TABS = [
   { value: 'bank_account', label: 'Bank Accounts', icon: 'mdi:bank' },
-  { value: 'credit_card', label: 'Credit Cards', icon: 'mdi:credit-card' },
+  { value: 'credit_line', label: 'Credit Cards', icon: 'mdi:credit-card' },
   { value: 'loan_account', label: 'Loan Accounts', icon: 'mdi:cash-multiple' },
 ];
 
