@@ -9,6 +9,7 @@ import {
   MdBusiness,
   MdSettings,
 } from 'react-icons/md';
+import { FaSearchDollar } from 'react-icons/fa';
 
 export const navData = [
   {
@@ -24,6 +25,12 @@ export const navData = [
     items: [
       { title: 'Accounts', path: paths.dashboard.accounts, icon: <MdAccountBalanceWallet /> },
       { title: 'Transactions', path: paths.dashboard.transactions, icon: <MdReceipt /> },
+    ],
+  },
+  {
+    subheader: 'Tools',
+    items: [
+      { title: 'Deal Scout', path: paths.dashboard.dealScout, icon: <FaSearchDollar /> },
     ],
   },
   {

@@ -229,6 +229,10 @@ export const endpoints = {
     update: (id) => `/api/v1/accounts/${id}`,
     delete: (id) => `/api/v1/accounts/${id}`,
   },
+  dealScout: {
+    searchDeals: '/api/v1/deal-scout/search-deals',
+    searchAlternatives: '/api/v1/deal-scout/search-alternatives',
+  },
 };
 
 // Export cookie utilities for use in other files
