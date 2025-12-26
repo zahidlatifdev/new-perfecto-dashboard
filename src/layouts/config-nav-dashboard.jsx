@@ -8,6 +8,7 @@ import {
   MdGroups,
   MdBusiness,
   MdSettings,
+  MdLock,
 } from 'react-icons/md';
 import { FaSearchDollar } from 'react-icons/fa';
 
@@ -31,6 +32,7 @@ export const navData = [
     subheader: 'Tools',
     items: [
       { title: 'Deal Scout', path: paths.dashboard.dealScout, icon: <FaSearchDollar /> },
+      { title: 'Locker', path: paths.dashboard.locker, icon: <MdLock /> },
     ],
   },
   {

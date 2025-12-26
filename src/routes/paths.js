@@ -27,6 +27,7 @@ export const paths = {
     accounts: `${ROOTS.DASHBOARD}/accounts`,
     transactions: `${ROOTS.DASHBOARD}/transactions`,
     dealScout: `${ROOTS.DASHBOARD}/deal-scout`,
+    locker: `${ROOTS.DASHBOARD}/locker`,
     team: `${ROOTS.DASHBOARD}/team`,
     company: `${ROOTS.DASHBOARD}/company`,
     settings: `${ROOTS.DASHBOARD}/settings`,
