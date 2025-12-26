@@ -33,6 +33,7 @@ export const navData = [
     items: [
       { title: 'Deal Scout', path: paths.dashboard.dealScout, icon: <FaSearchDollar /> },
       { title: 'Locker', path: paths.dashboard.locker, icon: <MdLock /> },
+      { title: 'Fun Facts', path: paths.dashboard.funFacts, icon: <MdDashboard /> },
     ],
   },
   {
