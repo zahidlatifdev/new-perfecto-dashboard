@@ -19,6 +19,7 @@ import { MonthlyComparisonChart } from '../components/monthly-comparison-chart';
 import { ForecastChart } from '../components/forecast-chart';
 import { SummarySection } from '../components/summary-section';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { useAuthContext } from 'src/auth/hooks';
 
 // Tab Panel Component
 function TabPanel({ children, value, index, ...other }) {
@@ -36,6 +37,7 @@ function TabPanel({ children, value, index, ...other }) {
 }
 
 export default function ForecastingView() {
+    const { selectedCompany } = useAuthContext();
     const [selectedTab, setSelectedTab] = useState(0);
     const [forecastData, setForecastData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export default function ForecastingView() {
             setLoading(true);
             setError(null);
 
-            const response = await axiosInstance.get(endpoints.forcast.get('6947ed00003c5bcd72d24f9f'));
+            const response = await axiosInstance.get(endpoints.forcast.get(selectedCompany._id));
 
             console.log('Forecast API Response:', response.data);
 

@@ -213,7 +213,10 @@ export const endpoints = {
   },
   forcast: {
     get: (companyId) => `/api/v1/forecasting/${companyId}`,
-  }
+  },
+  savingScan: {
+    get: (companyId) => `/api/v1/savings-scan/${companyId}`,
+  },
 };
 
 // Export cookie utilities for use in other files

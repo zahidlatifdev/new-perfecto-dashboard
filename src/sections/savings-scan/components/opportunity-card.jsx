@@ -1,0 +1,150 @@
+import { Card, CardContent, Box, Typography, Chip, Button, alpha } from '@mui/material';
+import { Iconify } from 'src/components/iconify';
+
+const difficultyColors = {
+    easy: 'success',
+    medium: 'warning',
+    hard: 'error',
+};
+
+const statusIcons = {
+    new: 'mdi:sparkles',
+    reviewing: 'mdi:clock-outline',
+    implemented: 'mdi:check-circle',
+    dismissed: 'mdi:close',
+};
+
+const cardGradients = [
+    { primary: '#6366f1', secondary: '#818cf8' }, // indigo
+    { primary: '#10b981', secondary: '#34d399' }, // green
+    { primary: '#f59e0b', secondary: '#fbbf24' }, // amber
+    { primary: '#8b5cf6', secondary: '#a78bfa' }, // purple
+    { primary: '#3b82f6', secondary: '#60a5fa' }, // blue
+    { primary: '#ec4899', secondary: '#f472b6' }, // pink
+];
+
+export function OpportunityCard({ opportunity, index }) {
+    const gradient = cardGradients[index % cardGradients.length];
+    const statusIcon = statusIcons[opportunity.status];
+
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(value);
+    };
+
+    return (
+        <Card
+            sx={{
+                height: '100%',
+                minHeight: 280,
+                background: (theme) =>
+                    `linear-gradient(135deg, ${alpha(gradient.primary, 0.08)} 0%, ${alpha(gradient.secondary, 0.04)} 50%, transparent 100%)`,
+                border: (theme) => `1px solid ${alpha(gradient.primary, 0.2)}`,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: (theme) => `0 12px 24px ${alpha(gradient.primary, 0.15)}`,
+                },
+            }}
+        >
+            <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Header */}
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, mb: 2 }}>
+                    <Box
+                        sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            bgcolor: (theme) =>
+                                opportunity.status === 'implemented'
+                                    ? alpha(theme.palette.success.main, 0.16)
+                                    : alpha(gradient.primary, 0.16),
+                            flexShrink: 0,
+                        }}
+                    >
+                        <Iconify
+                            icon={statusIcon}
+                            width={24}
+                            sx={{
+                                color:
+                                    opportunity.status === 'implemented'
+                                        ? 'success.main'
+                                        : gradient.primary,
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', lineHeight: 1.2 }}>
+                            {formatCurrency(opportunity.estimated_annual_savings)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            per year
+                        </Typography>
+                    </Box>
+                </Box>
+
+                {/* Content */}
+                <Box sx={{ flex: 1, mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5, lineHeight: 1.3 }}>
+                        {opportunity.title}
+                    </Typography>
+                    {opportunity.vendor && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            {opportunity.vendor}
+                        </Typography>
+                    )}
+                    <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            lineHeight: 1.5,
+                        }}
+                    >
+                        {opportunity.description}
+                    </Typography>
+                </Box>
+
+                {/* Footer */}
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        flexWrap: 'wrap',
+                        pt: 2,
+                        borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                    }}
+                >
+                    <Chip label={opportunity.category} size="small" variant="outlined" />
+                    <Chip
+                        label={opportunity.difficulty}
+                        size="small"
+                        color={difficultyColors[opportunity.difficulty]}
+                        sx={{ textTransform: 'capitalize' }}
+                    />
+                    {opportunity.status !== 'implemented' && opportunity.status !== 'dismissed' && (
+                        <Button
+                            size="small"
+                            endIcon={<Iconify icon="eva:arrow-forward-fill" />}
+                            sx={{ ml: 'auto', minWidth: 'auto', px: 1.5, py: 0.5, fontSize: '0.75rem' }}
+                        >
+                            Action
+                        </Button>
+                    )}
+                </Box>
+            </CardContent>
+        </Card>
+    );
+}
