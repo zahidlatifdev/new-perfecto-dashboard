@@ -19,6 +19,7 @@ export const navData = [
       { title: 'Dashboard', path: paths.dashboard.root, icon: <MdDashboard /> },
       { title: 'Chat With Books', path: paths.dashboard.chat, icon: <MdChat /> },
       { title: 'Reports', path: paths.dashboard.reports, icon: <MdAssessment /> },
+      { title: 'AI Forecasting', path: paths.dashboard.forecasting, icon: <MdAssessment /> },
     ],
   },
   {
