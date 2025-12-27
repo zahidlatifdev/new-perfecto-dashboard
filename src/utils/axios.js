@@ -211,6 +211,9 @@ export const endpoints = {
     uploadVersion: (id) => `/api/v1/documents/${id}/versions`,
     download: (id) => `/api/v1/documents/${id}/download`,
   },
+  forcast: {
+    get: (companyId) => `/api/v1/forecasting/${companyId}`,
+  }
 };
 
 // Export cookie utilities for use in other files
