@@ -25,6 +25,8 @@ export const paths = {
     chat: `${ROOTS.DASHBOARD}/chat`,
     reports: `${ROOTS.DASHBOARD}/reports`,
     forecasting: `${ROOTS.DASHBOARD}/forecasting`,
+    saving: `${ROOTS.DASHBOARD}/saving`,
+    simulator: `${ROOTS.DASHBOARD}/simulator`,
     accounts: `${ROOTS.DASHBOARD}/accounts`,
     transactions: `${ROOTS.DASHBOARD}/transactions`,
     dealScout: `${ROOTS.DASHBOARD}/deal-scout`,

@@ -291,7 +291,7 @@ export default function ForecastingView() {
                 )}
 
                 {/* AI Insights */}
-                {hasInsights && <AIInsightsSection insights={ai_insights} />}
+                {/* {hasInsights && <AIInsightsSection insights={ai_insights} />} */}
 
                 {/* Charts Tabs */}
                 {(hasMonthlyComparison || hasForecasts) && (

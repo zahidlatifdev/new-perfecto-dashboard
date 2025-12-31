@@ -217,6 +217,17 @@ export const endpoints = {
   savingScan: {
     get: (companyId) => `/api/v1/savings-scan/${companyId}`,
   },
+  simulator: {
+    baseline: '/api/v1/simulator/baseline',
+    list: '/api/v1/simulator',
+    create: '/api/v1/simulator',
+    get: (id) => `/api/v1/simulator/${id}`,
+    update: (id) => `/api/v1/simulator/${id}`,
+    delete: (id) => `/api/v1/simulator/${id}`,
+    duplicate: (id) => `/api/v1/simulator/${id}/duplicate`,
+    stats: '/api/v1/simulator/stats',
+    compare: '/api/v1/simulator/compare',
+  },
 };
 
 // Export cookie utilities for use in other files
