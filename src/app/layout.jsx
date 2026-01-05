@@ -15,6 +15,7 @@ import { WebSocketProvider } from 'src/components/websocket-provider';
 
 import { AuthProvider } from 'src/auth/context/jwt';
 import { CategoryProvider } from 'src/contexts/category-context';
+import { BookkeepingModeProvider } from 'src/contexts/bookkeeping-mode-context';
 
 // ----------------------------------------------------------------------
 
@@ -34,20 +35,22 @@ export default async function RootLayout({ children }) {
 
         <AuthProvider>
           <CategoryProvider>
-            <SettingsProvider
-              settings={settings}
-              caches={CONFIG.isStaticExport ? 'localStorage' : 'cookie'}
-            >
-              <ThemeProvider>
-                <MotionLazy>
-                  <WebSocketProvider>
-                    <ProgressBar />
-                    <SettingsDrawer />
-                    {children}
-                  </WebSocketProvider>
-                </MotionLazy>
-              </ThemeProvider>
-            </SettingsProvider>
+            <BookkeepingModeProvider>
+              <SettingsProvider
+                settings={settings}
+                caches={CONFIG.isStaticExport ? 'localStorage' : 'cookie'}
+              >
+                <ThemeProvider>
+                  <MotionLazy>
+                    <WebSocketProvider>
+                      <ProgressBar />
+                      <SettingsDrawer />
+                      {children}
+                    </WebSocketProvider>
+                  </MotionLazy>
+                </ThemeProvider>
+              </SettingsProvider>
+            </BookkeepingModeProvider>
           </CategoryProvider>
         </AuthProvider>
       </body>

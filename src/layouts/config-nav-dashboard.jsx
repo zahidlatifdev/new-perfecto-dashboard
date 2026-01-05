@@ -16,7 +16,7 @@ export const navData = [
   {
     subheader: 'Services',
     items: [
-      { title: 'Dashboard', path: paths.dashboard.root, icon: <MdDashboard /> },
+      { title: 'My Bookkeeping', path: paths.dashboard.bookkeeping, icon: <MdDashboard /> },
     ],
   },
   {
