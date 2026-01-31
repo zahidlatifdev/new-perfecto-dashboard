@@ -25,6 +25,8 @@ import { Form, Field } from 'src/components/hook-form';
 import { signUp } from 'src/auth/context/jwt';
 import { useAuthContext } from 'src/auth/hooks';
 
+import axios, { endpoints } from 'src/utils/axios';
+
 // ----------------------------------------------------------------------
 
 export const SignUpSchema = zod.object({
@@ -88,6 +90,26 @@ export function JwtSignUpView() {
         },
       });
       await checkUserSession?.();
+
+      // Check if there's a pending invitation
+      const pendingInvitation = sessionStorage.getItem('pendingInvitation');
+
+      if (pendingInvitation) {
+        try {
+          // Accept the invitation after successful signup
+          await axios.post(endpoints.invitations.accept(pendingInvitation));
+          sessionStorage.removeItem('pendingInvitation');
+
+          // Redirect to dashboard
+          router.push(paths.dashboard.root);
+          return;
+        } catch (inviteError) {
+          console.error('Failed to accept invitation:', inviteError);
+          setErrorMsg('Account created successfully, but failed to accept invitation. Please try accepting the invitation link again.');
+          router.replace('/dashboard/select-company');
+          return;
+        }
+      }
 
       // After signup, user will need to verify email and then create/join a company
       router.replace('/dashboard/select-company');

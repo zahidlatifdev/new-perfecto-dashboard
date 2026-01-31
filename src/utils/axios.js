@@ -143,6 +143,7 @@ export const endpoints = {
     company: (id) => `/api/v1/invitations/company/${id}`,
     send: (id) => `/api/v1/invitations/company/${id}/send`,
     userPending: '/api/v1/invitations/user/pending',
+    info: (token) => `/api/v1/invitations/info/${token}`,
     accept: (token) => `/api/v1/invitations/accept/${token}`,
     reject: (token) => `/api/v1/invitations/reject/${token}`,
     resend: (id) => `/api/v1/invitations/${id}/resend`,
@@ -227,6 +228,30 @@ export const endpoints = {
     duplicate: (id) => `/api/v1/simulator/${id}/duplicate`,
     stats: '/api/v1/simulator/stats',
     compare: '/api/v1/simulator/compare',
+  },
+  bookkeeping: {
+    // Messages
+    messages: (companyId) => `/api/v1/bookkeeping/${companyId}/messages`,
+    sendMessage: (companyId) => `/api/v1/bookkeeping/${companyId}/messages`,
+    deleteMessage: (companyId, messageId) => `/api/v1/bookkeeping/${companyId}/messages/${messageId}`,
+
+    // Documents
+    documents: (companyId) => `/api/v1/bookkeeping/${companyId}/documents`,
+    uploadDocument: (companyId) => `/api/v1/bookkeeping/${companyId}/documents`,
+    deleteDocument: (companyId, documentId) => `/api/v1/bookkeeping/${companyId}/documents/${documentId}`,
+
+    // Tasks
+    tasks: (companyId) => `/api/v1/bookkeeping/${companyId}/tasks`,
+    createTask: (companyId) => `/api/v1/bookkeeping/${companyId}/tasks`,
+    updateTask: (companyId, taskId) => `/api/v1/bookkeeping/${companyId}/tasks/${taskId}`,
+    deleteTask: (companyId, taskId) => `/api/v1/bookkeeping/${companyId}/tasks/${taskId}`,
+    addTaskComment: (companyId, taskId) => `/api/v1/bookkeeping/${companyId}/tasks/${taskId}/comments`,
+
+    // Activity
+    activity: (companyId) => `/api/v1/bookkeeping/${companyId}/activity`,
+
+    // Stats
+    stats: (companyId) => `/api/v1/bookkeeping/${companyId}/stats`,
   },
 };
 

@@ -20,6 +20,7 @@ import { RouterLink } from 'src/routes/components';
 import { useBoolean } from 'src/hooks/use-boolean';
 
 import { useAuthContext } from 'src/auth/hooks';
+import axios, { endpoints } from 'src/utils/axios';
 
 import { AnimateLogo2 } from 'src/components/animate';
 import { Form, Field } from 'src/components/hook-form';
@@ -64,6 +65,25 @@ export function CenteredSignInView() {
   const onSubmit = handleSubmit(async (data) => {
     try {
       await signIn(data.email, data.password);
+      // Check for pending invitation
+      const pendingInvitation = sessionStorage.getItem('pendingInvitation');
+      console.log('Pending invitation from sessionStorage:', pendingInvitation);
+      if (pendingInvitation) {
+        try {
+          console.log('Attempting to accept invitation:', pendingInvitation);
+          await axios.post(endpoints.invitations.accept(pendingInvitation));
+          sessionStorage.removeItem('pendingInvitation');
+          console.log('Invitation accepted successfully');
+          router.push(paths.dashboard.root);
+          return;
+        } catch (inviteError) {
+          console.error('Failed to accept invitation:', inviteError);
+          sessionStorage.removeItem('pendingInvitation');
+          setErrorMsg('Signed in, but failed to accept invitation. Try the invitation link again.');
+          router.push(paths.dashboard.root);
+          return;
+        }
+      }
       router.push(paths.dashboard.root);
     } catch (error) {
       console.error(error);

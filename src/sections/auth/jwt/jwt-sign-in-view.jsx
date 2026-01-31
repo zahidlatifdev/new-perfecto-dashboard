@@ -68,6 +68,24 @@ export function JwtSignInView() {
     try {
       const result = await signInWithPassword({ email: data.email, password: data.password });
 
+      // Check for pending invitation
+      const pendingInvitation = sessionStorage.getItem('pendingInvitation');
+
+      if (pendingInvitation) {
+        // Accept the invitation after login
+        try {
+          await axios.post(endpoints.invitations.accept(pendingInvitation));
+          sessionStorage.removeItem('pendingInvitation');
+          await checkUserSession?.();
+          router.push(paths.dashboard.root);
+          router.refresh();
+          return;
+        } catch (invError) {
+          console.error('Failed to accept invitation:', invError);
+          setErrorMsg('Failed to accept invitation. Please try again from the invitation link.');
+        }
+      }
+
       // Auto-select the first company if user has companies
       if (result.companies?.length > 0) {
         await switchCompany({ companyId: result.companies[0]._id });

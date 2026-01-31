@@ -19,6 +19,10 @@ export const paths = {
       connectAccount: `${ROOTS.AUTH}/connect-account`,
     },
   },
+  // Invitations
+  invitation: {
+    accept: (token) => `/invitation/accept/${token}`,
+  },
   // DASHBOARD
   dashboard: {
     root: ROOTS.DASHBOARD,

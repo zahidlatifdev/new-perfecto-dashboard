@@ -49,7 +49,8 @@ export const signUp = async ({
   phone,
   companyName,
   companyType,
-  companySize
+  companySize,
+  skipCompanyCreation = false
 }) => {
   const params = {
     email,
@@ -60,6 +61,7 @@ export const signUp = async ({
     companyName,
     companyType,
     companySize,
+    skipCompanyCreation,
   };
 
   try {

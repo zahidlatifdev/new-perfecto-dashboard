@@ -21,6 +21,7 @@ import { RouterLink } from 'src/routes/components';
 import { useBoolean } from 'src/hooks/use-boolean';
 
 import { useAuthContext } from 'src/auth/hooks';
+import axios, { endpoints } from 'src/utils/axios';
 
 import { AnimateLogo2 } from 'src/components/animate';
 import { Form, Field } from 'src/components/hook-form';
@@ -98,6 +99,10 @@ export function CenteredSignUpView() {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
+      // Check if there's a pending invitation
+      const pendingInvitation = sessionStorage.getItem('pendingInvitation');
+      console.log('Sign-up: Pending invitation check:', pendingInvitation);
+
       await signUp(
         data.email,
         data.password,
@@ -106,8 +111,12 @@ export function CenteredSignUpView() {
         data.phone,
         data.companyName,
         data.companyType,
-        data.companySize
+        data.companySize,
+        !!pendingInvitation // Skip company creation if there's a pending invitation
       );
+
+      // Keep pending invitation in sessionStorage through email verification
+      // It will be used after user verifies email and signs in
 
       // Show success message and redirect to verify email
       router.push(`${paths.auth.jwt.verifyEmail}?email=${encodeURIComponent(data.email)}`);
@@ -222,7 +231,7 @@ export function CenteredSignUpView() {
       }}
     >
       {'By signing up, I agree to '}
-      <Link  href="#" underline="always" color="text.primary">
+      <Link href="#" underline="always" color="text.primary">
         Terms of service
       </Link>
       {' and '}
