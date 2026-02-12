@@ -11,11 +11,12 @@ import {
     ListItemText,
     Divider,
     Tooltip,
+    CircularProgress,
 } from '@mui/material';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Iconify } from 'src/components/iconify';
-import { getCategoryInfo } from '../constants';
+import { getCategoryInfo, isExtractableCategory } from '../constants';
 import { ExpiryBadge } from './expiry-badge';
 
 export function DocumentCard({
@@ -170,6 +171,52 @@ export function DocumentCard({
                         {document.expiryDate && (
                             <Box sx={{ mt: 1.5 }}>
                                 <ExpiryBadge expiryDate={document.expiryDate} />
+                            </Box>
+                        )}
+
+                        {/* Processing Status for extractable documents */}
+                        {isExtractableCategory(document.category) && document.processingStatus && document.processingStatus !== 'none' && (
+                            <Box sx={{ mt: 1 }}>
+                                {(document.processingStatus === 'pending' || document.processingStatus === 'processing') && (
+                                    <Chip
+                                        icon={<CircularProgress size={12} thickness={5} />}
+                                        label="Extracting data..."
+                                        size="small"
+                                        color="info"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                    />
+                                )}
+                                {document.processingStatus === 'completed' && document.extractedData && (
+                                    <Chip
+                                        icon={<Iconify icon="solar:check-circle-bold" width={14} />}
+                                        label="Data extracted"
+                                        size="small"
+                                        color="success"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                    />
+                                )}
+                                {document.processingStatus === 'completed' && !document.extractedData && (
+                                    <Chip
+                                        icon={<Iconify icon="solar:info-circle-bold" width={14} />}
+                                        label="No data extracted"
+                                        size="small"
+                                        color="warning"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                    />
+                                )}
+                                {document.processingStatus === 'failed' && (
+                                    <Chip
+                                        icon={<Iconify icon="solar:danger-triangle-bold" width={14} />}
+                                        label="Extraction failed"
+                                        size="small"
+                                        color="error"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                    />
+                                )}
                             </Box>
                         )}
 

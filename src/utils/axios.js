@@ -211,6 +211,7 @@ export const endpoints = {
     stats: '/api/v1/documents/stats',
     uploadVersion: (id) => `/api/v1/documents/${id}/versions`,
     download: (id) => `/api/v1/documents/${id}/download`,
+    reprocess: (id) => `/api/v1/documents/${id}/reprocess`,
   },
   forcast: {
     get: (companyId) => `/api/v1/forecasting/${companyId}`,

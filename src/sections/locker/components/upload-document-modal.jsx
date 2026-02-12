@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Iconify } from 'src/components/iconify';
-import { DOCUMENT_CATEGORIES } from '../constants';
+import { DOCUMENT_CATEGORIES, isExtractableCategory } from '../constants';
 
 // Allowed file types
 const ALLOWED_FILE_TYPES = [
@@ -320,6 +320,24 @@ export function UploadDocumentModal({ open, onOpenChange, onSave }) {
                             ))}
                         </Select>
                     </FormControl>
+
+                    {/* Data Extraction Info */}
+                    {category && isExtractableCategory(category) && (
+                        <Alert
+                            severity="info"
+                            icon={<Iconify icon="solar:magic-stick-3-bold-duotone" width={22} />}
+                            sx={{ borderRadius: 1.5 }}
+                        >
+                            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                                Smart Data Extraction
+                            </Typography>
+                            <Typography variant="body2">
+                                We&apos;ll automatically extract key details like vendor info, line items, totals, and
+                                more from your {category}. The extracted data will be displayed once processing is
+                                complete.
+                            </Typography>
+                        </Alert>
+                    )}
 
                     {/* Expiry Date */}
                     <Box>

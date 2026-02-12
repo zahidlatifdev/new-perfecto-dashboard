@@ -2,6 +2,27 @@
 
 export const DOCUMENT_CATEGORIES = [
     {
+        id: 'receipt',
+        label: 'Receipts',
+        icon: 'solar:bill-list-bold-duotone',
+        expiryDefault: false,
+        extractable: true,
+    },
+    {
+        id: 'invoice',
+        label: 'Invoices',
+        icon: 'solar:document-add-bold-duotone',
+        expiryDefault: false,
+        extractable: true,
+    },
+    {
+        id: 'bill',
+        label: 'Bills',
+        icon: 'solar:wallet-money-bold-duotone',
+        expiryDefault: false,
+        extractable: true,
+    },
+    {
         id: 'insurance',
         label: 'Insurance Policies',
         icon: 'solar:shield-check-bold-duotone',
@@ -44,12 +65,6 @@ export const DOCUMENT_CATEGORIES = [
         expiryDefault: false,
     },
     {
-        id: 'bank',
-        label: 'Bank & Financial',
-        icon: 'solar:card-bold-duotone',
-        expiryDefault: false,
-    },
-    {
         id: 'vendor',
         label: 'Vendor Agreements',
         icon: 'solar:handshake-bold-duotone',
@@ -57,6 +72,12 @@ export const DOCUMENT_CATEGORIES = [
     },
 ];
 
+export const EXTRACTABLE_CATEGORIES = ['receipt', 'invoice', 'bill'];
+
 export function getCategoryInfo(categoryId) {
     return DOCUMENT_CATEGORIES.find((c) => c.id === categoryId) || DOCUMENT_CATEGORIES[0];
+}
+
+export function isExtractableCategory(categoryId) {
+    return EXTRACTABLE_CATEGORIES.includes(categoryId);
 }

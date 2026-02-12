@@ -19,6 +19,7 @@ import { differenceInDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Iconify } from 'src/components/iconify';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import websocketService from 'src/utils/websocket';
 import { DocumentCard } from '../components/document-card';
 import { CategoryFilter } from '../components/category-filter';
 import { UpcomingExpiries } from '../components/upcoming-expiries';
@@ -83,6 +84,77 @@ export function LockerView() {
     useEffect(() => {
         fetchDocuments();
     }, [fetchDocuments]);
+
+    // Listen for real-time document processing updates via WebSocket
+    useEffect(() => {
+        const handleDocumentProcessed = (data) => {
+            if (data.type !== 'locker_document') return;
+            // Refresh the document from API to get full extracted data
+            refreshDocument(data.id);
+            if (data.hasData) {
+                toast.success('Data extraction completed!');
+            }
+        };
+
+        const handleDocumentProcessing = (data) => {
+            if (data.type !== 'locker_document') return;
+            setDocuments((prev) =>
+                prev.map((doc) =>
+                    doc.id === data.id ? { ...doc, processingStatus: 'processing' } : doc
+                )
+            );
+        };
+
+        const handleDocumentFailed = (data) => {
+            if (data.type !== 'locker_document') return;
+            setDocuments((prev) =>
+                prev.map((doc) =>
+                    doc.id === data.id
+                        ? { ...doc, processingStatus: 'failed', processingError: data.error }
+                        : doc
+                )
+            );
+            toast.error('Data extraction failed. You can retry from the document details.');
+        };
+
+        websocketService.on('documentProcessed', handleDocumentProcessed);
+        websocketService.on('documentProcessing', handleDocumentProcessing);
+        websocketService.on('documentProcessingFailed', handleDocumentFailed);
+
+        return () => {
+            websocketService.off('documentProcessed', handleDocumentProcessed);
+            websocketService.off('documentProcessing', handleDocumentProcessing);
+            websocketService.off('documentProcessingFailed', handleDocumentFailed);
+        };
+    }, []);
+
+    // Refresh a single document from API
+    const refreshDocument = async (docId) => {
+        try {
+            const response = await axiosInstance.get(endpoints.documents.get(docId));
+            if (response.data.success) {
+                const updated = {
+                    ...response.data.data,
+                    id: response.data.data._id,
+                    uploadDate: new Date(response.data.data.uploadDate),
+                    expiryDate: response.data.data.expiryDate
+                        ? new Date(response.data.data.expiryDate)
+                        : null,
+                    versions: response.data.data.versions?.map((v) => ({
+                        ...v,
+                        timestamp: new Date(v.timestamp),
+                    })),
+                };
+                setDocuments((prev) =>
+                    prev.map((doc) => (doc.id === docId ? updated : doc))
+                );
+                // Also update viewing document if it's the same one
+                setViewingDocument((prev) => (prev?.id === docId ? updated : prev));
+            }
+        } catch (error) {
+            console.error('Error refreshing document:', error);
+        }
+    };
 
     // Calculate notification count (documents expiring within 30 days)
     const notificationCount = useMemo(() => {
@@ -320,6 +392,42 @@ export function LockerView() {
         }
     };
 
+    const handleReprocess = async (doc) => {
+        try {
+            toast.loading('Starting data extraction...', { id: 'reprocess' });
+
+            const response = await axiosInstance.post(endpoints.documents.reprocess(doc.id));
+
+            if (response.data.success) {
+                const updated = {
+                    ...response.data.data,
+                    id: response.data.data._id,
+                    uploadDate: new Date(response.data.data.uploadDate),
+                    expiryDate: response.data.data.expiryDate
+                        ? new Date(response.data.data.expiryDate)
+                        : null,
+                    versions: response.data.data.versions?.map((v) => ({
+                        ...v,
+                        timestamp: new Date(v.timestamp),
+                    })),
+                };
+
+                setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+
+                if (viewingDocument?.id === doc.id) {
+                    setViewingDocument(updated);
+                }
+
+                toast.success('Data extraction restarted. We\'ll notify you when it\'s done.', {
+                    id: 'reprocess',
+                });
+            }
+        } catch (error) {
+            console.error('Error reprocessing document:', error);
+            toast.error(error.message || 'Failed to reprocess document', { id: 'reprocess' });
+        }
+    };
+
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Container maxWidth="lg">
@@ -485,6 +593,7 @@ export function LockerView() {
                     onShare={handleShare}
                     onUploadNewVersion={handleUploadNewVersion}
                     onDownloadVersion={handleDownloadVersion}
+                    onReprocess={handleReprocess}
                 />
 
                 <ShareDocumentModal

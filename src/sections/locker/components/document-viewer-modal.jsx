@@ -12,14 +12,16 @@ import {
     Grid,
     IconButton,
     CircularProgress,
+    Badge,
 } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Iconify } from 'src/components/iconify';
 import axiosInstance, { endpoints } from 'src/utils/axios';
-import { getCategoryInfo } from '../constants';
+import { getCategoryInfo, isExtractableCategory } from '../constants';
 import { ExpiryBadge } from './expiry-badge';
 import { VersionHistory } from './version-history';
+import { ExtractedDataDisplay } from './extracted-data-display';
 
 export function DocumentViewerModal({
     document,
@@ -29,6 +31,7 @@ export function DocumentViewerModal({
     onShare,
     onUploadNewVersion,
     onDownloadVersion,
+    onReprocess,
 }) {
     const [currentTab, setCurrentTab] = useState('preview');
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -144,6 +147,23 @@ export function DocumentViewerModal({
                     }}
                 >
                     <Tab label="Preview" value="preview" />
+                    {isExtractableCategory(document.category) && (
+                        <Tab
+                            label={
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <Iconify icon="solar:magic-stick-3-bold-duotone" width={16} />
+                                    <span>Extracted Data</span>
+                                    {(document.processingStatus === 'pending' || document.processingStatus === 'processing') && (
+                                        <CircularProgress size={12} thickness={5} />
+                                    )}
+                                    {document.processingStatus === 'completed' && document.extractedData?.documentType && (
+                                        <Badge color="success" variant="dot" />
+                                    )}
+                                </Stack>
+                            }
+                            value="extracted"
+                        />
+                    )}
                     <Tab
                         label={
                             <Stack direction="row" spacing={1} alignItems="center">
@@ -335,6 +355,21 @@ export function DocumentViewerModal({
                                 </Box>
                             )}
                         </Stack>
+                    )}
+
+                    {currentTab === 'extracted' && isExtractableCategory(document.category) && (
+                        <Box
+                            sx={{
+                                p: 2,
+                                bgcolor: 'background.neutral',
+                                borderRadius: 2,
+                            }}
+                        >
+                            <ExtractedDataDisplay
+                                document={document}
+                                onReprocess={onReprocess ? () => onReprocess(document) : undefined}
+                            />
+                        </Box>
                     )}
 
                     {currentTab === 'history' && (
