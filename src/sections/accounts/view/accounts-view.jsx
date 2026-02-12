@@ -276,7 +276,7 @@ export function AccountsView() {
                           <IconButton
                             size="small"
                             color="error"
-                            onClick={() => handleOpenUnlinkDialog(account)}
+                            onClick={() => handleOpenDisconnectDialog(account)}
                             disabled={loading}
                           >
                             <Iconify icon="eva:power-outline" />
