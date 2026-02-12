@@ -58,8 +58,21 @@ export default function ForecastingView() {
 
             // Handle API response - check the actual response structure
             if (response.data?.success === true && response.data?.data) {
-                console.log('Setting forecast data:', response.data.data);
-                setForecastData(response.data.data);
+                const data = response.data.data;
+
+                // Check if the nested data has success: false or is empty
+                if (data.success === false ||
+                    (!data.key_metrics &&
+                        (!data.ai_insights || data.ai_insights.length === 0) &&
+                        (!data.monthly_comparison || data.monthly_comparison.length === 0) &&
+                        !data.forecasts)) {
+                    console.warn('API returned empty or failed forecast data');
+                    setError('Not enough data to generate forecasts. Please ensure you have sufficient transaction history.');
+                    setForecastData(null);
+                } else {
+                    console.log('Setting forecast data:', data);
+                    setForecastData(data);
+                }
             } else if (response.data?.success === false) {
                 // API returned success: false
                 console.warn('API returned failure:', response.data.message);
@@ -202,6 +215,35 @@ export default function ForecastingView() {
     const hasMonthlyComparison = monthly_comparison && monthly_comparison.length > 0;
     const hasForecasts = forecasts && Object.keys(forecasts).length > 0;
     const hasSummary = summary && Object.keys(summary).length > 0;
+
+    // If we have no meaningful data at all, show empty state
+    if (!hasKeyMetrics && !hasInsights && !hasMonthlyComparison && !hasForecasts && !hasSummary) {
+        return (
+            <DashboardContent maxWidth="xl">
+                <Stack spacing={3}>
+                    <Typography variant="h4">AI Forecasting</Typography>
+                    <Alert severity="info">
+                        Not enough data to generate forecasts. Please ensure you have sufficient transaction history.
+                    </Alert>
+                    <Card>
+                        <CardContent>
+                            <Box sx={{ textAlign: 'center', py: 6 }}>
+                                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                                    Insufficient Data for Forecasting
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                    The AI forecasting system requires at least 3-6 months of transaction history to generate accurate predictions.
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Please continue adding transactions, and forecasts will be generated automatically once sufficient data is available.
+                                </Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Stack>
+            </DashboardContent>
+        );
+    }
 
     return (
         <DashboardContent maxWidth="xl">
