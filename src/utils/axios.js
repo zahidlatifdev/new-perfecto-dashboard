@@ -219,6 +219,10 @@ export const endpoints = {
   savingScan: {
     get: (companyId) => `/api/v1/savings-scan/${companyId}`,
   },
+  funFacts: {
+    get: (companyId) => `/api/v1/funfacts/${companyId}`,
+    trigger: (companyId) => `/api/v1/funfacts/${companyId}/trigger`,
+  },
   simulator: {
     baseline: '/api/v1/simulator/baseline',
     list: '/api/v1/simulator',
