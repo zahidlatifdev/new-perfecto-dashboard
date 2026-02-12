@@ -490,7 +490,7 @@ export function LockerView() {
                     </Stack>
                 </Paper>
 
-                {documents.length === 0 ? (
+                {!isLoading && stats && stats.total === 0 ? (
                     <EmptyState onUpload={() => setUploadModalOpen(true)} />
                 ) : (
                     <>
