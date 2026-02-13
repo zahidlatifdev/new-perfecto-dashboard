@@ -129,13 +129,37 @@ export function OpportunityCard({ opportunity, index }) {
                         borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}`,
                     }}
                 >
-                    <Chip label={opportunity.category} size="small" variant="outlined" />
-                    <Chip
-                        label={opportunity.difficulty}
-                        size="small"
-                        color={difficultyColors[opportunity.difficulty]}
-                        sx={{ textTransform: 'capitalize' }}
-                    />
+                    {opportunity.category && (
+                        <Chip label={opportunity.category} size="small" variant="outlined" />
+                    )}
+                    {opportunity.difficulty && (
+                        <Chip
+                            label={opportunity.difficulty}
+                            size="small"
+                            color={difficultyColors[opportunity.difficulty] || 'default'}
+                            sx={{ textTransform: 'capitalize' }}
+                        />
+                    )}
+                    {opportunity.confidence_level && (
+                        <Chip
+                            label={opportunity.confidence_level}
+                            size="small"
+                            variant="outlined"
+                            color={
+                                opportunity.confidence_level === 'high' ? 'success' :
+                                    opportunity.confidence_level === 'medium' ? 'warning' : 'default'
+                            }
+                            sx={{ textTransform: 'capitalize', fontSize: '0.7rem' }}
+                        />
+                    )}
+                    {opportunity.effort_level && opportunity.effort_level !== opportunity.difficulty && (
+                        <Chip
+                            label={`Effort: ${opportunity.effort_level}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ textTransform: 'capitalize', fontSize: '0.7rem' }}
+                        />
+                    )}
                     {opportunity.action_recommended && (
                         <Button
                             size="small"

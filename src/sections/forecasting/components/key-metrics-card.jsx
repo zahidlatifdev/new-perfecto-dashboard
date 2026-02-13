@@ -1,8 +1,9 @@
 import { Card, CardContent, Stack, Box, Typography } from '@mui/material';
 import { Iconify } from 'src/components/iconify';
 
-export function KeyMetricsCard({ title, value, change, trend, icon, iconColor, iconBg }) {
+export function KeyMetricsCard({ title, value, change, trend, icon, iconColor, iconBg, prefix, suffix }) {
     const formatValue = (val, isMonths = false) => {
+        if (val == null || val === undefined) return '—';
         if (isMonths) return `${val} months`;
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -25,6 +26,8 @@ export function KeyMetricsCard({ title, value, change, trend, icon, iconColor, i
         return 'mdi:minus';
     };
 
+    const isMonths = title?.includes('Runway');
+
     return (
         <Card>
             <CardContent>
@@ -34,11 +37,13 @@ export function KeyMetricsCard({ title, value, change, trend, icon, iconColor, i
                             {title}
                         </Typography>
                         <Typography variant="h4" sx={{ mb: 0.5 }}>
-                            {formatValue(value, title.includes('Runway'))}
+                            {prefix}{formatValue(value, isMonths)}{suffix}
                         </Typography>
                         {change && (
                             <Stack direction="row" alignItems="center" spacing={0.5}>
-                                <Iconify icon={getTrendIcon(trend)} width={14} sx={{ color: getTrendColor(trend) }} />
+                                {trend && (
+                                    <Iconify icon={getTrendIcon(trend)} width={14} sx={{ color: getTrendColor(trend) }} />
+                                )}
                                 <Typography variant="caption" color={getTrendColor(trend)}>
                                     {change}
                                 </Typography>

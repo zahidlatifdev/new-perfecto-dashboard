@@ -219,9 +219,39 @@ export default function ForecastingView() {
     const hasKeyMetrics = key_metrics && Object.keys(key_metrics).length > 0;
     const hasInsights = ai_insights && ai_insights.length > 0;
     const hasMonthlyComparison = monthly_comparison && monthly_comparison.length > 0;
-    const hasForecasts = forecasts && Object.keys(forecasts).length > 0;
-    const hasCategoryForecasts = forecasts?.by_category && Object.keys(forecasts.by_category).length > 0;
-    const hasSummary = summary && Object.keys(summary).length > 0;
+    const hasForecasts = forecasts && (forecasts.income || forecasts.expenses || forecasts.net_cash_flow);
+    const hasCategoryForecasts = forecasts?.by_category && typeof forecasts.by_category === 'object' && Object.keys(forecasts.by_category).length > 0;
+    const hasSummary = summary && (summary.historical_averages || summary.forecast_averages || summary.projected_change);
+
+    const hasAnyContent = hasKeyMetrics || hasInsights || hasMonthlyComparison || hasForecasts || hasSummary;
+
+    if (!hasAnyContent) {
+        return (
+            <DashboardContent maxWidth="xl">
+                <Stack spacing={3}>
+                    <Typography variant="h4">AI Forecasting</Typography>
+                    <Card>
+                        <CardContent>
+                            <Box sx={{ textAlign: 'center', py: 6 }}>
+                                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                                    No Meaningful Forecast Data Available
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    The system received forecast data but it appears to be empty. This typically means there isn&apos;t enough transaction history to generate forecasts.
+                                </Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Stack>
+            </DashboardContent>
+        );
+    }
+
+    // Build period info string
+    const periodParts = [];
+    if (forecastData.historical_periods) periodParts.push(`${forecastData.historical_periods} historical months`);
+    if (forecastData.forecast_periods) periodParts.push(`${forecastData.forecast_periods} months forecasted`);
+    const periodInfo = periodParts.length > 0 ? periodParts.join(' · ') : null;
 
     return (
         <DashboardContent maxWidth="xl">
@@ -229,11 +259,18 @@ export default function ForecastingView() {
                 {/* Page Title */}
                 <Box>
                     <Typography variant="h4">AI Forecasting</Typography>
-                    {forecastData.date_range && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                            {forecastData.date_range}
-                        </Typography>
-                    )}
+                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 0.5 }}>
+                        {forecastData.date_range && (
+                            <Typography variant="body2" color="text.secondary">
+                                {forecastData.date_range}
+                            </Typography>
+                        )}
+                        {periodInfo && (
+                            <Typography variant="body2" color="text.secondary">
+                                {forecastData.date_range ? '·' : ''} {periodInfo}
+                            </Typography>
+                        )}
+                    </Stack>
                 </Box>
 
                 {/* Key Metrics */}
@@ -248,11 +285,13 @@ export default function ForecastingView() {
                         {key_metrics?.monthly_revenue && (
                             <KeyMetricsCard
                                 title="Monthly Revenue"
-                                value={key_metrics.monthly_revenue.value || 0}
+                                value={key_metrics.monthly_revenue.value}
                                 change={
-                                    key_metrics.monthly_revenue.change_pct !== undefined
+                                    key_metrics.monthly_revenue.change_pct != null
                                         ? `${key_metrics.monthly_revenue.change_pct > 0 ? '+' : ''}${key_metrics.monthly_revenue.change_pct.toFixed(1)}% vs last month`
-                                        : null
+                                        : key_metrics.monthly_revenue.change_vs_avg != null
+                                            ? `${key_metrics.monthly_revenue.change_vs_avg > 0 ? '+' : ''}${key_metrics.monthly_revenue.change_vs_avg.toFixed(1)}% vs avg`
+                                            : null
                                 }
                                 trend={key_metrics.monthly_revenue.trend}
                                 icon="mdi:currency-usd"
@@ -264,11 +303,13 @@ export default function ForecastingView() {
                         {key_metrics?.monthly_burn_rate && (
                             <KeyMetricsCard
                                 title="Monthly Burn Rate"
-                                value={key_metrics.monthly_burn_rate.value || 0}
+                                value={key_metrics.monthly_burn_rate.value}
                                 change={
-                                    key_metrics.monthly_burn_rate.change_pct !== undefined
+                                    key_metrics.monthly_burn_rate.change_pct != null
                                         ? `${key_metrics.monthly_burn_rate.change_pct > 0 ? '+' : ''}${key_metrics.monthly_burn_rate.change_pct.toFixed(1)}% vs avg`
-                                        : null
+                                        : key_metrics.monthly_burn_rate.change_vs_avg != null
+                                            ? `${key_metrics.monthly_burn_rate.change_vs_avg > 0 ? '+' : ''}${key_metrics.monthly_burn_rate.change_vs_avg.toFixed(1)}% vs avg`
+                                            : null
                                 }
                                 trend={key_metrics.monthly_burn_rate.trend}
                                 icon="mdi:trending-down"
@@ -280,11 +321,13 @@ export default function ForecastingView() {
                         {key_metrics?.cash_runway && (
                             <KeyMetricsCard
                                 title="Cash Runway"
-                                value={key_metrics.cash_runway.months || 0}
+                                value={key_metrics.cash_runway.months}
                                 change={
                                     key_metrics.cash_runway.is_infinite
                                         ? 'Infinite runway'
-                                        : 'at current burn rate'
+                                        : key_metrics.cash_runway.estimated_cash_balance != null
+                                            ? `Est. balance: $${(key_metrics.cash_runway.estimated_cash_balance / 1000).toFixed(0)}K`
+                                            : 'at current burn rate'
                                 }
                                 icon="mdi:calendar-month"
                                 iconColor="primary.main"
@@ -295,13 +338,16 @@ export default function ForecastingView() {
                         {key_metrics?.net_profit_mtd && (
                             <KeyMetricsCard
                                 title="Net Profit (MTD)"
-                                value={key_metrics.net_profit_mtd.value || 0}
+                                value={key_metrics.net_profit_mtd.value}
                                 change={
-                                    key_metrics.net_profit_mtd.margin_pct !== undefined
+                                    key_metrics.net_profit_mtd.margin_pct != null
                                         ? `${key_metrics.net_profit_mtd.margin_pct.toFixed(1)}% margin`
                                         : null
                                 }
-                                trend={key_metrics.net_profit_mtd.value >= 0 ? 'up' : 'down'}
+                                trend={
+                                    key_metrics.net_profit_mtd.trend ||
+                                    (key_metrics.net_profit_mtd.value != null && key_metrics.net_profit_mtd.value >= 0 ? 'up' : 'down')
+                                }
                                 icon="mdi:lightning-bolt"
                                 iconColor="success.main"
                                 iconBg="success.lighter"
@@ -317,7 +363,7 @@ export default function ForecastingView() {
                 {(hasMonthlyComparison || hasForecasts) && (
                     <Card>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider', pl: 2 }}>
-                            <Tabs value={selectedTab} onChange={handleTabChange} aria-label="forecasting charts tabs">
+                            <Tabs value={selectedTab} onChange={handleTabChange} aria-label="forecasting charts tabs" variant="scrollable" scrollButtons="auto">
                                 <Tab label="Revenue & Expenses" />
                                 <Tab label="Income Forecast" />
                                 <Tab label="Expenses Forecast" />
@@ -329,67 +375,44 @@ export default function ForecastingView() {
                         <CardContent>
                             {/* Revenue & Expenses Tab */}
                             <TabPanel value={selectedTab} index={0}>
-                                {hasMonthlyComparison ? (
-                                    <MonthlyComparisonChart data={monthly_comparison} />
-                                ) : (
-                                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                                        <Typography variant="body2" color="text.secondary">
-                                            No monthly comparison data available. More transaction history is needed to generate this chart.
-                                        </Typography>
-                                    </Box>
-                                )}
+                                <MonthlyComparisonChart data={monthly_comparison} />
                             </TabPanel>
 
                             {/* Income Forecast Tab */}
                             <TabPanel value={selectedTab} index={1}>
-                                {forecasts?.income && !forecasts.income.error && forecasts.income.forecast?.length > 0 ? (
+                                {forecasts?.income ? (
                                     <ForecastChart forecastData={forecasts.income} type="income" />
                                 ) : (
                                     <Box sx={{ textAlign: 'center', py: 4 }}>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            {forecasts?.income?.error || 'No income forecast data available'}
+                                        <Typography variant="body2" color="text.secondary">
+                                            No income forecast data available. More historical data may be required.
                                         </Typography>
-                                        {forecasts?.income?.error && (
-                                            <Typography variant="caption" color="text.secondary">
-                                                More historical data is required for accurate forecasting.
-                                            </Typography>
-                                        )}
                                     </Box>
                                 )}
                             </TabPanel>
 
                             {/* Expenses Forecast Tab */}
                             <TabPanel value={selectedTab} index={2}>
-                                {forecasts?.expenses && !forecasts.expenses.error && forecasts.expenses.forecast?.length > 0 ? (
+                                {forecasts?.expenses ? (
                                     <ForecastChart forecastData={forecasts.expenses} type="expenses" />
                                 ) : (
                                     <Box sx={{ textAlign: 'center', py: 4 }}>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            {forecasts?.expenses?.error || 'No expenses forecast data available'}
+                                        <Typography variant="body2" color="text.secondary">
+                                            No expenses forecast data available. More historical data may be required.
                                         </Typography>
-                                        {forecasts?.expenses?.error && (
-                                            <Typography variant="caption" color="text.secondary">
-                                                More historical data is required for accurate forecasting.
-                                            </Typography>
-                                        )}
                                     </Box>
                                 )}
                             </TabPanel>
 
                             {/* Cash Flow Forecast Tab */}
                             <TabPanel value={selectedTab} index={3}>
-                                {forecasts?.net_cash_flow && !forecasts.net_cash_flow.error && forecasts.net_cash_flow.forecast?.length > 0 ? (
+                                {forecasts?.net_cash_flow ? (
                                     <ForecastChart forecastData={forecasts.net_cash_flow} type="net_cash_flow" />
                                 ) : (
                                     <Box sx={{ textAlign: 'center', py: 4 }}>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            {forecasts?.net_cash_flow?.error || 'No cash flow forecast data available'}
+                                        <Typography variant="body2" color="text.secondary">
+                                            No cash flow forecast data available. More historical data may be required.
                                         </Typography>
-                                        {forecasts?.net_cash_flow?.error && (
-                                            <Typography variant="caption" color="text.secondary">
-                                                More historical data is required for accurate forecasting.
-                                            </Typography>
-                                        )}
                                     </Box>
                                 )}
                             </TabPanel>

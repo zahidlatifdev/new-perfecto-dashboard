@@ -12,6 +12,8 @@ import {
     Alert,
     Button as MuiButton,
     alpha,
+    Chip,
+    Paper,
 } from '@mui/material';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
@@ -20,6 +22,16 @@ import { StatsCards } from '../components/stats-cards';
 import { FilterButtons } from '../components/filter-buttons';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import { useAuthContext } from 'src/auth/hooks';
+
+const formatCurrency = (value) => {
+    if (value == null) return '—';
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
+};
 
 export function SavingsScanView() {
     const { selectedCompany } = useAuthContext();
@@ -41,24 +53,16 @@ export function SavingsScanView() {
 
             const response = await axiosInstance.get(endpoints.savingScan.get(selectedCompany._id));
 
-            console.log('Savings Scan API Response:', response.data);
-
-            // Handle API response
             if (response.data?.success === true && response.data?.data) {
-                console.log('Setting savings scan data:', response.data.data);
                 setSavingsData(response.data.data);
             } else if (response.data?.success === false) {
-                console.warn('API returned failure:', response.data.message);
                 setError(response.data.message || 'No savings scan data available');
                 setSavingsData(null);
             } else {
-                console.error('Unexpected response format:', response.data);
                 setError('Unexpected response format from server');
                 setSavingsData(null);
             }
         } catch (err) {
-            console.error('Error fetching savings scan data:', err);
-
             if (err.response) {
                 const errorMessage = err.response.data?.message || err.response.data?.error || 'Failed to load savings scan data';
                 setError(errorMessage);
@@ -67,7 +71,6 @@ export function SavingsScanView() {
             } else {
                 setError(err.message || 'Failed to load savings scan data');
             }
-
             setSavingsData(null);
         } finally {
             setLoading(false);
@@ -75,15 +78,49 @@ export function SavingsScanView() {
     };
 
     // Filter opportunities
-    const filteredOpportunities = savingsData?.opportunities?.filter(
+    const opportunities = savingsData?.opportunities || [];
+    const filteredOpportunities = opportunities.filter(
         (opp) => filter === 'all' || opp.status === filter
-    ) || [];
+    );
 
-    // Calculate stats
-    const totalPotentialSavings = savingsData?.dashboard_summary?.potential_savings_per_year || 0;
-    const implementedSavings = savingsData?.dashboard_summary?.already_saved || 0;
-    const opportunitiesCount = savingsData?.dashboard_summary?.opportunities_found || 0;
-    const categoriesCount = savingsData?.dashboard_summary?.categories_count || 0;
+    // Calculate stats — prefer dashboard_summary, fall back to summary, then compute from opportunities
+    const dashSummary = savingsData?.dashboard_summary;
+    const summaryData = savingsData?.summary;
+
+    const totalPotentialSavings =
+        dashSummary?.potential_savings_per_year ??
+        summaryData?.total_estimated_annual_savings ??
+        opportunities.reduce((sum, o) => sum + (o.estimated_annual_savings || 0), 0);
+
+    const implementedSavings =
+        dashSummary?.already_saved ??
+        opportunities
+            .filter((o) => o.status === 'implemented')
+            .reduce((sum, o) => sum + (o.estimated_annual_savings || 0), 0);
+
+    const opportunitiesCount =
+        dashSummary?.opportunities_found ?? opportunities.length;
+
+    const categoriesCount =
+        dashSummary?.categories_count ??
+        new Set(opportunities.map((o) => o.category).filter(Boolean)).size;
+
+    // Top spending categories from summary
+    const topSpendingCategories = summaryData?.top_spending_categories || [];
+
+    // Opportunities by category from dashboard_summary
+    const opportunitiesByCategory = dashSummary?.opportunities_by_category;
+    const hasOppsByCategory = opportunitiesByCategory && (
+        (opportunitiesByCategory instanceof Map && opportunitiesByCategory.size > 0) ||
+        (typeof opportunitiesByCategory === 'object' && Object.keys(opportunitiesByCategory).length > 0)
+    );
+
+    // Convert Map or object to entries
+    const oppsByCategoryEntries = hasOppsByCategory
+        ? (opportunitiesByCategory instanceof Map
+            ? Array.from(opportunitiesByCategory.entries())
+            : Object.entries(opportunitiesByCategory))
+        : [];
 
     if (loading) {
         return (
@@ -110,18 +147,14 @@ export function SavingsScanView() {
                         severity={isNoData ? 'info' : 'error'}
                         action={
                             !isNoData && (
-                                <MuiButton
-                                    color="inherit"
-                                    size="small"
-                                    onClick={fetchSavingsData}
-                                >
+                                <MuiButton color="inherit" size="small" onClick={fetchSavingsData}>
                                     Retry
                                 </MuiButton>
                             )
                         }
                     >
                         {isNoData
-                            ? 'No savings scan data available. Please check back later or contact support if you believe this is an error.'
+                            ? 'No savings scan data available yet. The AI needs transaction history to identify cost-saving opportunities.'
                             : (
                                 <>
                                     {error}
@@ -131,6 +164,34 @@ export function SavingsScanView() {
                             )
                         }
                     </Alert>
+                </Stack>
+            </DashboardContent>
+        );
+    }
+
+    // Check if we have any meaningful data at all
+    const hasOpportunities = opportunities.length > 0;
+    const hasStats = totalPotentialSavings > 0 || implementedSavings > 0 || opportunitiesCount > 0;
+    const hasAnyContent = hasOpportunities || hasStats || topSpendingCategories.length > 0;
+
+    if (!savingsData || !hasAnyContent) {
+        return (
+            <DashboardContent maxWidth="xl">
+                <Stack spacing={3}>
+                    <Typography variant="h4">Savings Scan</Typography>
+                    <Card>
+                        <CardContent>
+                            <Box sx={{ textAlign: 'center', py: 6 }}>
+                                <Iconify icon="mdi:sparkles" width={64} sx={{ color: 'text.disabled', mb: 2 }} />
+                                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                                    No Savings Opportunities Found Yet
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    The AI savings scan hasn&apos;t found enough data to identify cost-saving opportunities. Continue adding transactions and check back later.
+                                </Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
                 </Stack>
             </DashboardContent>
         );
@@ -175,16 +236,18 @@ export function SavingsScanView() {
                                 </Box>
                             </Box>
                             <Typography variant="body2" sx={{ opacity: 0.9, maxWidth: 600, mt: 2 }}>
-                                We've analyzed your expenses to find cost-saving opportunities across
+                                We&apos;ve analyzed your expenses to find cost-saving opportunities across
                                 subscriptions, vendors, and operations.
                             </Typography>
-                            {savingsData?.analysis_period && (
+                            {(savingsData?.analysis_period || savingsData?.total_transactions_analyzed > 0) && (
                                 <Box sx={{ display: 'flex', gap: 2, mt: 1.5, flexWrap: 'wrap' }}>
-                                    <Typography variant="caption" sx={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                        <Iconify icon="mdi:calendar-range" width={16} />
-                                        {savingsData.analysis_period}
-                                    </Typography>
-                                    {savingsData?.total_transactions_analyzed > 0 && (
+                                    {savingsData.analysis_period && (
+                                        <Typography variant="caption" sx={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Iconify icon="mdi:calendar-range" width={16} />
+                                            {savingsData.analysis_period}
+                                        </Typography>
+                                    )}
+                                    {savingsData.total_transactions_analyzed > 0 && (
                                         <Typography variant="caption" sx={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Iconify icon="mdi:receipt-text-outline" width={16} />
                                             {savingsData.total_transactions_analyzed} transactions analyzed
@@ -193,66 +256,105 @@ export function SavingsScanView() {
                                 </Box>
                             )}
                         </Box>
-                        {/* <MuiButton
-                            variant="contained"
-                            startIcon={<Iconify icon="mdi:sparkles" />}
-                            sx={{
-                                bgcolor: (theme) => alpha(theme.palette.common.white, 0.2),
-                                backdropFilter: 'blur(6px)',
-                                color: 'inherit',
-                                boxShadow: (theme) => theme.shadows[8],
-                                '&:hover': {
-                                    bgcolor: (theme) => alpha(theme.palette.common.white, 0.3),
-                                },
-                            }}
-                            onClick={fetchSavingsData}
-                        >
-                            Run New Scan
-                        </MuiButton> */}
                     </Box>
                 </Card>
 
                 {/* Stats Cards */}
-                <Grid container spacing={3}>
-                    <StatsCards
-                        totalPotentialSavings={totalPotentialSavings}
-                        implementedSavings={implementedSavings}
-                        opportunitiesCount={opportunitiesCount}
-                        categoriesCount={categoriesCount}
-                    />
-                </Grid>
-
-                {/* Filters */}
-                <FilterButtons filter={filter} onFilterChange={setFilter} />
-
-                {/* Opportunities Grid */}
-                {filteredOpportunities.length > 0 ? (
+                {hasStats && (
                     <Grid container spacing={3}>
-                        {filteredOpportunities.map((opportunity, index) => (
-                            <Grid item xs={12} md={6} lg={4} key={opportunity.title || index}>
-                                <OpportunityCard opportunity={opportunity} index={index} />
-                            </Grid>
-                        ))}
+                        <StatsCards
+                            totalPotentialSavings={totalPotentialSavings}
+                            implementedSavings={implementedSavings}
+                            opportunitiesCount={opportunitiesCount}
+                            categoriesCount={categoriesCount}
+                        />
                     </Grid>
-                ) : (
-                    <Card
-                        sx={{
-                            bgcolor: (theme) => alpha(theme.palette.grey[500], 0.04),
-                            border: (theme) => `2px dashed ${theme.palette.divider}`,
-                        }}
-                    >
-                        <CardContent sx={{ py: 12, textAlign: 'center' }}>
-                            <Iconify
-                                icon="mdi:sparkles"
-                                width={64}
-                                sx={{ color: 'text.disabled', mb: 2 }}
-                            />
-                            <Typography color="text.secondary">
-                                No opportunities found with this filter.
-                            </Typography>
+                )}
+
+                {/* Top Spending Categories */}
+                {topSpendingCategories.length > 0 && (
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" sx={{ mb: 2 }}>Top Spending Categories</Typography>
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                {topSpendingCategories.map((cat, idx) => (
+                                    <Paper
+                                        key={cat.category || idx}
+                                        sx={{
+                                            p: 2,
+                                            borderRadius: 2,
+                                            minWidth: 160,
+                                            bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                                            border: (theme) => `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                                        }}
+                                    >
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                            {cat.category || 'Unknown'}
+                                        </Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                            {formatCurrency(cat.amount)}
+                                        </Typography>
+                                    </Paper>
+                                ))}
+                            </Box>
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Opportunities by Category Breakdown */}
+                {oppsByCategoryEntries.length > 0 && (
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" sx={{ mb: 2 }}>Savings by Category</Typography>
+                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                                {oppsByCategoryEntries.map(([catName, catData]) => (
+                                    <Chip
+                                        key={catName}
+                                        label={`${catName}: ${formatCurrency(catData?.total_savings)} (${catData?.count || 0})`}
+                                        variant="outlined"
+                                        color="success"
+                                        sx={{ fontWeight: 600 }}
+                                    />
+                                ))}
+                            </Box>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Filters */}
+                {hasOpportunities && (
+                    <FilterButtons filter={filter} onFilterChange={setFilter} />
+                )}
+
+                {/* Opportunities Grid */}
+                {hasOpportunities ? (
+                    filteredOpportunities.length > 0 ? (
+                        <Grid container spacing={3}>
+                            {filteredOpportunities.map((opportunity, index) => (
+                                <Grid item xs={12} md={6} lg={4} key={opportunity.title || index}>
+                                    <OpportunityCard opportunity={opportunity} index={index} />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    ) : (
+                        <Card
+                            sx={{
+                                bgcolor: (theme) => alpha(theme.palette.grey[500], 0.04),
+                                border: (theme) => `2px dashed ${theme.palette.divider}`,
+                            }}
+                        >
+                            <CardContent sx={{ py: 8, textAlign: 'center' }}>
+                                <Iconify icon="mdi:filter-off-outline" width={48} sx={{ color: 'text.disabled', mb: 2 }} />
+                                <Typography color="text.secondary">
+                                    No opportunities match the &quot;{filter}&quot; filter.
+                                </Typography>
+                                <MuiButton size="small" onClick={() => setFilter('all')} sx={{ mt: 1 }}>
+                                    Show all
+                                </MuiButton>
+                            </CardContent>
+                        </Card>
+                    )
+                ) : null}
             </Stack>
         </DashboardContent>
     );
