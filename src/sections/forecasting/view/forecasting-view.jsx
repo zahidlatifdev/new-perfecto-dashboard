@@ -18,6 +18,7 @@ import { AIInsightsSection } from '../components/ai-insights-section';
 import { MonthlyComparisonChart } from '../components/monthly-comparison-chart';
 import { ForecastChart } from '../components/forecast-chart';
 import { SummarySection } from '../components/summary-section';
+import { CategoryForecastSection } from '../components/category-forecast-section';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import { useAuthContext } from 'src/auth/hooks';
 
@@ -219,6 +220,7 @@ export default function ForecastingView() {
     const hasInsights = ai_insights && ai_insights.length > 0;
     const hasMonthlyComparison = monthly_comparison && monthly_comparison.length > 0;
     const hasForecasts = forecasts && Object.keys(forecasts).length > 0;
+    const hasCategoryForecasts = forecasts?.by_category && Object.keys(forecasts.by_category).length > 0;
     const hasSummary = summary && Object.keys(summary).length > 0;
 
     return (
@@ -309,7 +311,7 @@ export default function ForecastingView() {
                 )}
 
                 {/* AI Insights */}
-                {/* {hasInsights && <AIInsightsSection insights={ai_insights} />} */}
+                {hasInsights && <AIInsightsSection insights={ai_insights} />}
 
                 {/* Charts Tabs */}
                 {(hasMonthlyComparison || hasForecasts) && (
@@ -320,6 +322,7 @@ export default function ForecastingView() {
                                 <Tab label="Income Forecast" />
                                 <Tab label="Expenses Forecast" />
                                 <Tab label="Cash Flow Forecast" />
+                                {hasCategoryForecasts && <Tab label="By Category" />}
                             </Tabs>
                         </Box>
 
@@ -390,6 +393,13 @@ export default function ForecastingView() {
                                     </Box>
                                 )}
                             </TabPanel>
+
+                            {/* By Category Tab */}
+                            {hasCategoryForecasts && (
+                                <TabPanel value={selectedTab} index={4}>
+                                    <CategoryForecastSection categories={forecasts.by_category} />
+                                </TabPanel>
+                            )}
                         </CardContent>
                     </Card>
                 )}
