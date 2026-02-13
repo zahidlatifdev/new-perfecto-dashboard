@@ -1,4 +1,5 @@
-import { Card, CardContent, Box, Typography, Chip, Button, alpha } from '@mui/material';
+import { useState } from 'react';
+import { Card, CardContent, Box, Typography, Chip, Button, alpha, Collapse } from '@mui/material';
 import { Iconify } from 'src/components/iconify';
 
 const difficultyColors = {
@@ -24,6 +25,7 @@ const cardGradients = [
 ];
 
 export function OpportunityCard({ opportunity, index }) {
+    const [expanded, setExpanded] = useState(false);
     const gradient = cardGradients[index % cardGradients.length];
     const statusIcon = statusIcons[opportunity.status];
 
@@ -134,16 +136,45 @@ export function OpportunityCard({ opportunity, index }) {
                         color={difficultyColors[opportunity.difficulty]}
                         sx={{ textTransform: 'capitalize' }}
                     />
-                    {opportunity.status !== 'implemented' && opportunity.status !== 'dismissed' && (
+                    {opportunity.action_recommended && (
                         <Button
                             size="small"
-                            endIcon={<Iconify icon="eva:arrow-forward-fill" />}
+                            endIcon={<Iconify icon={expanded ? 'eva:arrow-up-fill' : 'eva:arrow-forward-fill'} />}
                             sx={{ ml: 'auto', minWidth: 'auto', px: 1.5, py: 0.5, fontSize: '0.75rem' }}
+                            onClick={() => setExpanded(!expanded)}
                         >
-                            Action
+                            {expanded ? 'Less' : 'Action'}
                         </Button>
                     )}
                 </Box>
+
+                {/* Expandable action details */}
+                <Collapse in={expanded}>
+                    <Box sx={{ pt: 2, mt: 2, borderTop: (theme) => `1px dashed ${alpha(theme.palette.divider, 0.5)}` }}>
+                        {opportunity.action_recommended && (
+                            <Box sx={{ mb: 1.5 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', display: 'block', mb: 0.5 }}>
+                                    Recommended Action
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                                    {opportunity.action_recommended}
+                                </Typography>
+                            </Box>
+                        )}
+                        {opportunity.relevant_transactions?.length > 0 && (
+                            <Box>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', display: 'block', mb: 0.5 }}>
+                                    Related Transactions
+                                </Typography>
+                                {opportunity.relevant_transactions.map((t, i) => (
+                                    <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
+                                        • {t}
+                                    </Typography>
+                                ))}
+                            </Box>
+                        )}
+                    </Box>
+                </Collapse>
             </CardContent>
         </Card>
     );

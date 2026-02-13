@@ -21,13 +21,17 @@ export function ForecastChart({ forecastData, type = 'income' }) {
     };
 
     // Transform forecast data to chart format
-    const chartData = forecastData.forecast.map((value, index) => {
-        const confidenceInterval = forecastData.confidence_intervals[index] || {};
+    // Handles both new format ({date, forecast, lower_bound, upper_bound}) and legacy format (number)
+    const chartData = (forecastData.forecast || []).map((point, index) => {
+        const isObject = typeof point === 'object' && point !== null;
+        const value = isObject ? point.forecast : point;
+        const confidenceInterval = isObject ? null : (forecastData.confidence_intervals?.[index] || {});
+
         return {
-            period: `Period ${index + 1}`,
+            period: isObject ? point.date : `Period ${index + 1}`,
             projected: value,
-            lower: confidenceInterval.lower || value * 0.9,
-            upper: confidenceInterval.upper || value * 1.1,
+            lower: isObject ? point.lower_bound : (confidenceInterval?.lower || value * 0.9),
+            upper: isObject ? point.upper_bound : (confidenceInterval?.upper || value * 1.1),
         };
     });
 

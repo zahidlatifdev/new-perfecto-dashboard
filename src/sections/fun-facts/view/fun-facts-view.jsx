@@ -163,8 +163,10 @@ export function FunFactsView() {
     const [triggering, setTriggering] = useState(false);
 
     useEffect(() => {
-        fetchFunFacts();
-    }, []);
+        if (selectedCompany?._id) {
+            fetchFunFacts();
+        }
+    }, [selectedCompany?._id]);
 
     const fetchFunFacts = async () => {
         try {

@@ -27,10 +27,12 @@ export function SavingsScanView() {
     const [savingsData, setSavingsData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    console.log('Selected Company in SavingsScanView:', selectedCompany);
+
     useEffect(() => {
-        fetchSavingsData();
-    }, []);
+        if (selectedCompany?._id) {
+            fetchSavingsData();
+        }
+    }, [selectedCompany?._id]);
 
     const fetchSavingsData = async () => {
         try {
@@ -176,6 +178,20 @@ export function SavingsScanView() {
                                 We've analyzed your expenses to find cost-saving opportunities across
                                 subscriptions, vendors, and operations.
                             </Typography>
+                            {savingsData?.analysis_period && (
+                                <Box sx={{ display: 'flex', gap: 2, mt: 1.5, flexWrap: 'wrap' }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Iconify icon="mdi:calendar-range" width={16} />
+                                        {savingsData.analysis_period}
+                                    </Typography>
+                                    {savingsData?.total_transactions_analyzed > 0 && (
+                                        <Typography variant="caption" sx={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Iconify icon="mdi:receipt-text-outline" width={16} />
+                                            {savingsData.total_transactions_analyzed} transactions analyzed
+                                        </Typography>
+                                    )}
+                                </Box>
+                            )}
                         </Box>
                         {/* <MuiButton
                             variant="contained"

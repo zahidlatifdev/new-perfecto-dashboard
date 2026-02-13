@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { Iconify } from 'src/components/iconify';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import websocketService from 'src/utils/websocket';
+import { useAuthContext } from 'src/auth/hooks';
 import { DocumentCard } from '../components/document-card';
 import { CategoryFilter } from '../components/category-filter';
 import { UpcomingExpiries } from '../components/upcoming-expiries';
@@ -31,6 +32,7 @@ import { ShareDocumentModal } from '../components/share-document-modal';
 import { UploadNewVersionModal } from '../components/upload-new-version-modal';
 
 export function LockerView() {
+    const { selectedCompany } = useAuthContext();
     const [documents, setDocuments] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -78,7 +80,7 @@ export function LockerView() {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedCategory, searchQuery]);
+    }, [selectedCategory, searchQuery, selectedCompany?._id]);
 
     // Fetch documents on mount and when filters change
     useEffect(() => {

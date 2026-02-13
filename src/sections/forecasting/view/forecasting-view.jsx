@@ -44,8 +44,10 @@ export default function ForecastingView() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchForecastData();
-    }, []);
+        if (selectedCompany?._id) {
+            fetchForecastData();
+        }
+    }, [selectedCompany?._id]);
 
     const fetchForecastData = async () => {
         try {
