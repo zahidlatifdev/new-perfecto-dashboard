@@ -906,29 +906,29 @@ export function TransactionsView() {
 
   const summaryData = useMemo(() => {
     const txns = filteredTransactions.length ? filteredTransactions : transactions;
-    
+
     // Separate credit card transactions (liabilities) from regular transactions
     const creditCardTransactions = txns.filter(t => t.accountType === 'credit_card');
     const regularTransactions = txns.filter(t => t.accountType !== 'credit_card');
-    
+
     // Calculate credit card liabilities (debit amounts from credit cards)
     const creditCardLiabilities = creditCardTransactions.reduce((acc, t) => acc + (t.debit || 0), 0);
-    
+
     // Calculate loan liabilities (credit transactions with loan category)
-    const loanTransactions = txns.filter(t => 
+    const loanTransactions = txns.filter(t =>
       t.credit > 0 && t.category && t.category.toLowerCase().includes('loan')
     );
     const loanLiabilities = loanTransactions.reduce((acc, t) => acc + (t.credit || 0), 0);
-    
+
     // Regular debits and credits (excluding credit card debits and loan credits)
     const totalDebit = regularTransactions.reduce((acc, t) => acc + (t.debit || 0), 0);
     const totalCredit = regularTransactions.reduce((acc, t) => acc + (t.credit || 0), 0) - loanLiabilities;
-    
+
     // Income is credits minus loan liabilities
     const income = totalCredit;
     const expenses = totalDebit;
     const netAmount = income - expenses;
-    
+
     const creditTransactions = regularTransactions.filter((t) => t.credit > 0 && !t.category?.toLowerCase().includes('loan'));
     const debitTransactions = regularTransactions.filter((t) => t.debit > 0);
 
@@ -1428,6 +1428,7 @@ export function TransactionsView() {
       );
       if (response.data.success) {
         setTransactions((prev) => prev.filter((txn) => txn.id !== deleteTransactionId));
+        toast.success('Transaction deleted successfully');
         setTimeout(() => {
           setIsDeletingTransaction(false);
           handleCloseDeleteDialog();
@@ -1437,6 +1438,9 @@ export function TransactionsView() {
       }
     } catch (err) {
       setIsDeletingTransaction(false);
+      const errorMessage = err?.message || err?.error || 'Failed to delete transaction';
+      toast.error(errorMessage);
+      console.error('Delete transaction error:', err);
     }
   }, [deleteTransactionId, handleCloseDeleteDialog]);
 
