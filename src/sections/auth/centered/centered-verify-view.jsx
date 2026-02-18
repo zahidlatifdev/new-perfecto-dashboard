@@ -16,6 +16,7 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
+import { useAuthContext } from 'src/auth/hooks';
 import axios, { endpoints } from 'src/utils/axios';
 
 import { EmailInboxIcon } from 'src/assets/icons';
@@ -43,6 +44,7 @@ export function CenteredVerifyView() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const { verifyEmail } = useAuthContext();
   const [errorMsg, setErrorMsg] = useState('');
   const [resendSuccess, setResendSuccess] = useState(false);
 
@@ -67,14 +69,11 @@ export function CenteredVerifyView() {
     try {
       setErrorMsg('');
 
-      // Send verification code to backend
-      await axios.post(endpoints.auth.verifyEmail, {
-        email: data.email,
-        code: data.code,
-      });
+      // Verify email and auto sign-in
+      await verifyEmail(data.email, data.code);
 
-      // Redirect to account connection page after successful verification
-      router.push(`${paths.auth.jwt.connectAccount}?email=${encodeURIComponent(data.email)}`);
+      // Redirect to dashboard (user is now authenticated)
+      router.push(paths.dashboard.root);
     } catch (error) {
       console.error('Email verification failed:', error);
       setErrorMsg(error.message || 'Invalid verification code. Please check and try again.');

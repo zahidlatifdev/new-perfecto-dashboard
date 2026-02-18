@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     try {
       const { switchCompany: switchCompanyAction } = await import('./action');
       const { company } = await switchCompanyAction({ companyId });
-      
+
       // Update state with new company
       setState(prev => ({
         ...prev,
@@ -97,25 +97,25 @@ export function AuthProvider({ children }) {
   }, [checkUserSession]);
 
   const signUp = useCallback(async (
-    email, 
-    password, 
-    firstName, 
-    lastName, 
-    phone, 
-    companyName, 
-    companyType, 
+    email,
+    password,
+    firstName,
+    lastName,
+    phone,
+    companyName,
+    companyType,
     companySize
   ) => {
     const { signUp: signUpAction } = await import('./action');
-    return signUpAction({ 
-      email, 
-      password, 
-      firstName, 
-      lastName, 
-      phone, 
-      companyName, 
-      companyType, 
-      companySize 
+    return signUpAction({
+      email,
+      password,
+      firstName,
+      lastName,
+      phone,
+      companyName,
+      companyType,
+      companySize
     });
   }, []);
 
@@ -128,6 +128,14 @@ export function AuthProvider({ children }) {
       loading: false,
     });
   }, [setState]);
+
+  const verifyEmail = useCallback(async (email, code) => {
+    const { verifyEmail: verifyEmailAction } = await import('./action');
+    const data = await verifyEmailAction({ email, code });
+    // Refresh session so the context picks up the new authenticated state
+    await checkUserSession();
+    return data;
+  }, [checkUserSession]);
 
   const memoizedValue = useMemo(
     () => ({
@@ -145,18 +153,20 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       signOut,
+      verifyEmail,
       loading: status === 'loading',
       authenticated: status === 'authenticated',
       unauthenticated: status === 'unauthenticated',
     }),
     [
-      checkUserSession, 
-      switchCompany, 
-      signIn, 
-      signUp, 
-      signOut, 
-      state.user, 
-      state.company, 
+      checkUserSession,
+      switchCompany,
+      signIn,
+      signUp,
+      signOut,
+      verifyEmail,
+      state.user,
+      state.company,
       status
     ]
   );

@@ -123,12 +123,26 @@ export const resetPassword = async ({ token, password }) => {
 };
 
 /** **************************************
- * Verify email with code
+ * Verify email with code and auto sign-in
  *************************************** */
 export const verifyEmail = async ({ email, code }) => {
   try {
     const res = await axios.post(endpoints.auth.verifyEmail, { email, code });
-    return res.data;
+
+    // Backend now returns token + user + company for auto sign-in
+    const { token, user, companies, selectedCompany } = res.data.data || {};
+
+    if (token) {
+      await setSession(token);
+
+      if (selectedCompany) {
+        localStorage.setItem('selectedCompany', JSON.stringify(selectedCompany));
+      } else if (companies && companies.length > 0) {
+        localStorage.setItem('selectedCompany', JSON.stringify(companies[0]));
+      }
+    }
+
+    return { user, companies, selectedCompany };
   } catch (error) {
     console.error('Error during email verification:', error);
     throw error;
