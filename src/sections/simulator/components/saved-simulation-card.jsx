@@ -81,10 +81,12 @@ export function SavedSimulationCard({ simulation, onLoad, onDelete }) {
                         <Iconify icon="solar:play-bold" width={20} sx={{ mr: 1 }} />
                         Load Simulation
                     </MenuItem>
-                    <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-                        <Iconify icon="solar:trash-bin-trash-bold" width={20} sx={{ mr: 1 }} />
-                        Delete
-                    </MenuItem>
+                    {onDelete && (
+                        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+                            <Iconify icon="solar:trash-bin-trash-bold" width={20} sx={{ mr: 1 }} />
+                            Delete
+                        </MenuItem>
+                    )}
                 </Menu>
             </Box>
 

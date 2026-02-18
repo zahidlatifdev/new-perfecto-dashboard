@@ -26,6 +26,7 @@ import TextField from '@mui/material/TextField';
 import Switch from '@mui/material/Switch';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 import axios, { endpoints } from 'src/utils/axios';
@@ -43,6 +44,7 @@ const ACCOUNT_TYPES = [
 
 export function AccountsView() {
   const { company } = useAuthContext();
+  const { can } = usePermissions();
 
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -204,15 +206,17 @@ export function AccountsView() {
             </Typography>
           </div>
 
-          <LoadingButton
-            variant="contained"
-            color="primary"
-            startIcon={plaidLoading ? <CircularProgress size={20} /> : <Iconify icon="simple-icons:plaid" />}
-            onClick={handleConnectPlaid}
-            loading={plaidLoading}
-          >
-            {plaidLoading ? 'Initializing...' : 'Connect with Plaid'}
-          </LoadingButton>
+          {can('accounts', 'create') && (
+            <LoadingButton
+              variant="contained"
+              color="primary"
+              startIcon={plaidLoading ? <CircularProgress size={20} /> : <Iconify icon="simple-icons:plaid" />}
+              onClick={handleConnectPlaid}
+              loading={plaidLoading}
+            >
+              {plaidLoading ? 'Initializing...' : 'Connect with Plaid'}
+            </LoadingButton>
+          )}
         </Stack>
 
         {!!errorMsg && (
@@ -249,14 +253,16 @@ export function AccountsView() {
                     Connect your bank accounts, credit cards, or loans via Plaid to get started
                   </Typography>
                   <Stack direction="row" spacing={2} justifyContent="center">
-                    <LoadingButton
-                      variant="contained"
-                      startIcon={plaidLoading ? <CircularProgress size={20} /> : <Iconify icon="simple-icons:plaid" />}
-                      onClick={handleConnectPlaid}
-                      loading={plaidLoading}
-                    >
-                      Connect with Plaid
-                    </LoadingButton>
+                    {can('accounts', 'create') && (
+                      <LoadingButton
+                        variant="contained"
+                        startIcon={plaidLoading ? <CircularProgress size={20} /> : <Iconify icon="simple-icons:plaid" />}
+                        onClick={handleConnectPlaid}
+                        loading={plaidLoading}
+                      >
+                        Connect with Plaid
+                      </LoadingButton>
+                    )}
                   </Stack>
                 </CardContent>
               </Card>
@@ -277,7 +283,7 @@ export function AccountsView() {
                             size="small"
                             color="error"
                             onClick={() => handleOpenDisconnectDialog(account)}
-                            disabled={loading}
+                            disabled={loading || !can('accounts', 'delete')}
                           >
                             <Iconify icon="eva:power-outline" />
                           </IconButton>
@@ -319,7 +325,7 @@ export function AccountsView() {
                         )}
                       </Stack>
 
-                      {account.isPlaidLinked && (
+                      {account.isPlaidLinked && can('accounts', 'delete') && (
                         <Button
                           size="small"
                           variant="outlined"

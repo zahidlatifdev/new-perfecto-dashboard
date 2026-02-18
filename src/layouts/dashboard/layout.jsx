@@ -13,7 +13,6 @@ import { varAlpha, stylesMode } from 'src/theme/styles';
 
 import { bulletColor } from 'src/components/nav-section';
 import { useSettingsContext } from 'src/components/settings';
-import { CompanySelector } from 'src/components/company-selector';
 
 import { Main } from './main';
 import { NavMobile } from './nav-mobile';
@@ -26,6 +25,7 @@ import { _workspaces } from '../config-nav-workspace';
 import { LayoutSection } from '../core/layout-section';
 import { navData as dashboardNavData } from '../config-nav-dashboard';
 import { useAuthContext } from 'src/auth/hooks';
+import { canAccessModule } from 'src/auth/permissions';
 
 // ----------------------------------------------------------------------
 
@@ -40,8 +40,6 @@ export function DashboardLayout({ sx, children, data }) {
 
   const layoutQuery = 'lg';
 
-  const navData = data?.nav ?? dashboardNavData;
-
   const isNavMini = settings.navLayout === 'mini';
 
   const isNavHorizontal = settings.navLayout === 'horizontal';
@@ -49,13 +47,33 @@ export function DashboardLayout({ sx, children, data }) {
   const isNavVertical = isNavMini || settings.navLayout === 'vertical';
 
   // Use companies from auth context and map to workspace format
-  const { companies = [] } = useAuthContext();
-  const mappedWorkspaces = companies.map((company) => ({
-    id: company._id || company.id,
-    name: company.name,
-    logo: company.logo,
-    plan: company.plan || '',
+  const { companies = [], user } = useAuthContext();
+  const userRole = user?.role ?? null;
+
+  const mappedWorkspaces = companies.map((c) => ({
+    id: c._id || c.id,
+    name: c.name,
+    logo: c.logo,
+    plan: c.plan || '',
   }));
+
+  // Filter nav items based on user's role
+  const rawNavData = data?.nav ?? dashboardNavData;
+
+  const navData = useMemo(() => {
+    if (!userRole) return rawNavData;
+
+    return rawNavData
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          // If item has no module key, show it to everyone
+          if (!item.module) return true;
+          return canAccessModule(userRole, item.module);
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [rawNavData, userRole]);
 
   return (
     <>
@@ -93,7 +111,7 @@ export function DashboardLayout({ sx, children, data }) {
                 helpLink: false,
               }}
               slots={{
-                
+
                 bottomArea: isNavHorizontal ? (
                   <NavHorizontal
                     data={navData}

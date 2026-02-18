@@ -31,6 +31,7 @@ import { ForecastVsActualChart } from '../charts/forecast-vs-actual-chart';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { usePermissions } from 'src/hooks/use-permissions';
 
 const timeRangeLabels = {
   last_month: 'Last Month',
@@ -41,6 +42,7 @@ const timeRangeLabels = {
 
 export function ReportsView() {
   const router = useRouter();
+  const { can } = usePermissions();
   const [timeRange, setTimeRange] = useState('quarter');
   const [timeRangeAnchor, setTimeRangeAnchor] = useState(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -240,13 +242,15 @@ export function ReportsView() {
                     ))}
                   </Menu>
 
-                  <Button
-                    variant="contained"
-                    startIcon={<Iconify icon="solar:download-linear" />}
-                    onClick={() => setExportAllModal(true)}
-                  >
-                    Export All
-                  </Button>
+                  {can('reports', 'create') && (
+                    <Button
+                      variant="contained"
+                      startIcon={<Iconify icon="solar:download-linear" />}
+                      onClick={() => setExportAllModal(true)}
+                    >
+                      Export All
+                    </Button>
+                  )}
                 </Stack>
               </Stack>
             </Stack>

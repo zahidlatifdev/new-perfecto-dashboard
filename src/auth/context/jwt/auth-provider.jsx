@@ -16,7 +16,8 @@ import { setSession, isValidToken } from './utils';
 export function AuthProvider({ children }) {
   const { state, setState } = useSetState({
     user: null,
-    company: null, // Simplified to single company
+    company: null, // Selected company (with role)
+    companies: [], // All companies the user belongs to
     loading: true,
   });
 
@@ -30,19 +31,19 @@ export function AuthProvider({ children }) {
         const res = await axios.get(endpoints.auth.me);
 
         // Backend returns: { user, companies, selectedCompany }
-        const { user, selectedCompany } = res.data.data;
+        const { user, companies, selectedCompany } = res.data.data;
 
-        // For single company per user, just use selectedCompany
-        // The companies array is kept in backend for future multi-company support
         setState({
           user,
           company: selectedCompany,
+          companies: companies || [],
           loading: false
         });
       } else {
         setState({
           user: null,
           company: null,
+          companies: [],
           loading: false
         });
       }
@@ -51,6 +52,7 @@ export function AuthProvider({ children }) {
       setState({
         user: null,
         company: null,
+        companies: [],
         loading: false
       });
     }
@@ -146,10 +148,11 @@ export function AuthProvider({ children }) {
           role: state.company?.role ?? 'user',
         }
         : null,
-      company: state.company, // Single company instead of companies array
+      company: state.company, // Selected company
       selectedCompany: state.company, // Alias for backward compatibility
+      companies: state.companies, // All companies for workspace switching
       checkUserSession,
-      switchCompany, // Kept for future multi-company support
+      switchCompany,
       signIn,
       signUp,
       signOut,
@@ -167,6 +170,7 @@ export function AuthProvider({ children }) {
       verifyEmail,
       state.user,
       state.company,
+      state.companies,
       status
     ]
   );

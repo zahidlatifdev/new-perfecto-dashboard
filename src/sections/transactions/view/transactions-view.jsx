@@ -41,6 +41,7 @@ import { CategorySelector } from 'src/components/category-selector';
 import { fCurrency } from 'src/utils/format-number';
 import axios, { endpoints } from 'src/utils/axios';
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
 import toast from 'react-hot-toast';
 
 // ----------------------------------------------------------------------
@@ -128,6 +129,7 @@ const FILTER_OPTIONS = {
 
 export function TransactionsView() {
   const { company } = useAuthContext();
+  const { can } = usePermissions();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -1049,6 +1051,7 @@ export function TransactionsView() {
                                 size="small"
                                 onClick={() => handleOpenNoteDialog(row)}
                                 sx={{ opacity: 0.6, '&:hover': { opacity: 1 } }}
+                                disabled={!can('transactions', 'edit')}
                               >
                                 <Iconify
                                   icon={row.note ? "mdi:note-edit" : "mdi:note-plus"}
@@ -1088,7 +1091,7 @@ export function TransactionsView() {
                                     onClick={() => {
                                       handleUpdateCategoryAndType(row.id);
                                     }}
-                                    disabled={!modifiedRows[row.id] || updatingCategoryId === row.id}
+                                    disabled={!modifiedRows[row.id] || updatingCategoryId === row.id || !can('transactions', 'edit')}
                                     sx={{
                                       padding: '2px',
                                       ...(modifiedRows[row.id]
@@ -1113,6 +1116,7 @@ export function TransactionsView() {
                                 onClick={() => handleOpenEditDialog(row)}
                                 title="Edit Transaction"
                                 sx={{ padding: '2px' }}
+                                disabled={!can('transactions', 'edit')}
                               >
                                 <Iconify icon="ph:pencil-bold" width={16} />
                               </IconButton>
@@ -1122,6 +1126,7 @@ export function TransactionsView() {
                                 onClick={() => handleOpenDeleteDialog(row.id)}
                                 title="Delete Transaction"
                                 sx={{ padding: '2px' }}
+                                disabled={!can('transactions', 'delete')}
                               >
                                 <Iconify icon="ph:trash-bold" width={16} />
                               </IconButton>

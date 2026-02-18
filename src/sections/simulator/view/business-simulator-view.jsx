@@ -20,6 +20,7 @@ import { SavedSimulationCard } from '../components/saved-simulation-card';
 import { SimulatorBuilder } from '../components/simulator-builder';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
 import { fCurrency } from 'src/utils/format-number';
 import { Tooltip } from '@mui/material';
 
@@ -70,6 +71,7 @@ function SimulationCardSkeleton() {
 
 export function BusinessSimulatorView() {
     const { selectedCompany } = useAuthContext();
+    const { can } = usePermissions();
     const [isBuilderOpen, setIsBuilderOpen] = useState(false);
     const [savedSimulations, setSavedSimulations] = useState([]);
     const [baselineData, setBaselineData] = useState(null);
@@ -377,7 +379,7 @@ export function BusinessSimulatorView() {
                                     minWidth: 200,
                                     whiteSpace: 'nowrap',
                                 }}
-                                disabled={!baselineData?.expensesByCategory || baselineData.expensesByCategory.length === 0}
+                                disabled={!baselineData?.expensesByCategory || baselineData.expensesByCategory.length === 0 || !can('simulator', 'create')}
                             >
                                 Start Simulation
                             </Button>
@@ -558,7 +560,7 @@ export function BusinessSimulatorView() {
                                         variant="contained"
                                         onClick={() => setIsBuilderOpen(true)}
                                         startIcon={<Iconify icon="solar:play-bold" />}
-                                        disabled={!baselineData?.expensesByCategory || baselineData.expensesByCategory.length === 0}
+                                        disabled={!baselineData?.expensesByCategory || baselineData.expensesByCategory.length === 0 || !can('simulator', 'create')}
                                     >
                                         Create Your First Simulation
                                     </Button>
@@ -572,7 +574,7 @@ export function BusinessSimulatorView() {
                                     <SavedSimulationCard
                                         simulation={simulation}
                                         onLoad={handleLoadSimulation}
-                                        onDelete={handleDeleteSimulation}
+                                        onDelete={can('simulator', 'delete') ? handleDeleteSimulation : undefined}
                                     />
                                 </Grid>
                             ))}

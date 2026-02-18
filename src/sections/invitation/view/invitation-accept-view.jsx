@@ -24,12 +24,13 @@ import DialogActions from '@mui/material/DialogActions';
 import { Iconify } from 'src/components/iconify';
 import { useAuthContext } from 'src/auth/hooks';
 import axios, { endpoints } from 'src/utils/axios';
+import { setSession } from 'src/auth/context/jwt/utils';
 import { paths } from 'src/routes/paths';
 
 export function InvitationAcceptView() {
     const router = useRouter();
     const params = useParams();
-    const { authenticated } = useAuthContext();
+    const { authenticated, checkUserSession } = useAuthContext();
     const [invitation, setInvitation] = useState(null);
     const [company, setCompany] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -74,16 +75,34 @@ export function InvitationAcceptView() {
 
             const response = await axios.post(endpoints.invitations.accept(invitationId));
 
+            // Backend returns a new token scoped to the accepted company
+            const { token, company: acceptedCompany } = response.data.data || {};
+
+            if (token) {
+                // Set the new token so subsequent requests use the new company context
+                await setSession(token);
+
+                // Store the selected company
+                if (acceptedCompany) {
+                    localStorage.setItem('selectedCompany', JSON.stringify(acceptedCompany));
+                }
+            }
+
             setSuccess('Invitation accepted successfully! Redirecting to dashboard...');
 
-            // Redirect to dashboard with the new company
+            // Refresh auth context to pick up new company & role
+            await checkUserSession();
+
+            // Clean up pending invitation
+            sessionStorage.removeItem('pendingInvitation');
+
+            // Redirect to dashboard
             setTimeout(() => {
                 router.push(paths.dashboard.root);
-                window.location.reload(); // Refresh to load new company data
-            }, 2000);
+            }, 1500);
         } catch (err) {
             console.error('Failed to accept invitation:', err);
-            setError(err.response?.data?.message || 'Failed to accept invitation');
+            setError(err.response?.data?.message || err.message || 'Failed to accept invitation');
             setProcessing(false);
         }
     };

@@ -525,6 +525,12 @@ export function CenteredSignUpView() {
   };
 
   const handleVerifySuccess = () => {
+    // If there's a pending invitation, skip Plaid step and redirect to accept it
+    const pendingInvitation = sessionStorage.getItem('pendingInvitation');
+    if (pendingInvitation) {
+      router.push(paths.invitation.accept(pendingInvitation));
+      return;
+    }
     setActiveStep(2);
   };
 

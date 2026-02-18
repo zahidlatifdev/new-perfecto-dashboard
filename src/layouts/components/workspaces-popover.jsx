@@ -7,26 +7,44 @@ import Avatar from '@mui/material/Avatar';
 import MenuList from '@mui/material/MenuList';
 import MenuItem from '@mui/material/MenuItem';
 import ButtonBase from '@mui/material/ButtonBase';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { usePopover, CustomPopover } from 'src/components/custom-popover';
+import { useAuthContext } from 'src/auth/hooks';
 
 // ----------------------------------------------------------------------
 
 export function WorkspacesPopover({ data = [], sx, ...other }) {
   const popover = usePopover();
+  const { switchCompany, company } = useAuthContext();
 
   const mediaQuery = 'sm';
 
-  const [workspace, setWorkspace] = useState(data[0]);
+  // Use the current company from auth context as the selected workspace
+  const currentWorkspace = data.find((w) => w.id === (company?._id || company?.id)) || data[0];
+
+  const [switching, setSwitching] = useState(false);
 
   const handleChangeWorkspace = useCallback(
-    (newValue) => {
-      setWorkspace(newValue);
-      popover.onClose();
+    async (newValue) => {
+      if (newValue.id === currentWorkspace?.id) {
+        popover.onClose();
+        return;
+      }
+
+      try {
+        setSwitching(true);
+        popover.onClose();
+        await switchCompany(newValue.id);
+      } catch (error) {
+        console.error('Failed to switch workspace:', error);
+      } finally {
+        setSwitching(false);
+      }
     },
-    [popover]
+    [popover, switchCompany, currentWorkspace]
   );
 
   return (
@@ -34,6 +52,7 @@ export function WorkspacesPopover({ data = [], sx, ...other }) {
       <ButtonBase
         disableRipple
         onClick={popover.onOpen}
+        disabled={switching}
         sx={{
           py: 0.5,
           gap: { xs: 0.5, [mediaQuery]: 1 },
@@ -41,12 +60,16 @@ export function WorkspacesPopover({ data = [], sx, ...other }) {
         }}
         {...other}
       >
-        <Box
-          component="img"
-          alt={workspace?.name}
-          src={workspace?.logo}
-          sx={{ width: 24, height: 24, borderRadius: '50%' }}
-        />
+        {switching ? (
+          <CircularProgress size={24} />
+        ) : (
+          <Box
+            component="img"
+            alt={currentWorkspace?.name}
+            src={currentWorkspace?.logo}
+            sx={{ width: 24, height: 24, borderRadius: '50%' }}
+          />
+        )}
 
         <Box
           component="span"
@@ -55,17 +78,17 @@ export function WorkspacesPopover({ data = [], sx, ...other }) {
             display: { xs: 'none', [mediaQuery]: 'inline-flex' },
           }}
         >
-          {workspace?.name}
+          {currentWorkspace?.name}
         </Box>
 
         <Label
-          color={workspace?.plan === 'Free' ? 'default' : 'info'}
+          color={currentWorkspace?.plan === 'Free' ? 'default' : 'info'}
           sx={{
             height: 22,
             display: { xs: 'none', [mediaQuery]: 'inline-flex' },
           }}
         >
-          {workspace?.plan}
+          {currentWorkspace?.plan}
         </Label>
 
         <Iconify width={16} icon="carbon:chevron-sort" sx={{ color: 'text.disabled' }} />
@@ -81,7 +104,7 @@ export function WorkspacesPopover({ data = [], sx, ...other }) {
           {data.map((option) => (
             <MenuItem
               key={option.id}
-              selected={option.id === workspace?.id}
+              selected={option.id === currentWorkspace?.id}
               onClick={() => handleChangeWorkspace(option)}
               sx={{ height: 48 }}
             >

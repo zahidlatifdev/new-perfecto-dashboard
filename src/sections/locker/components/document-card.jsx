@@ -269,28 +269,36 @@ export function DocumentCard({
                     <ListItemText>Share</ListItemText>
                 </MenuItem>
                 <Divider />
-                <MenuItem onClick={() => handleMenuAction(() => onUploadNewVersion(document))}>
-                    <ListItemIcon>
-                        <Iconify icon="solar:upload-square-bold" width={20} />
-                    </ListItemIcon>
-                    <ListItemText>Upload New Version</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => handleMenuAction(() => onEdit(document))}>
-                    <ListItemIcon>
-                        <Iconify icon="solar:pen-bold" width={20} />
-                    </ListItemIcon>
-                    <ListItemText>Edit Details</ListItemText>
-                </MenuItem>
-                <Divider />
-                <MenuItem
-                    onClick={() => handleMenuAction(() => onDelete(document.id))}
-                    sx={{ color: 'error.main' }}
-                >
-                    <ListItemIcon>
-                        <Iconify icon="solar:trash-bin-trash-bold" width={20} sx={{ color: 'error.main' }} />
-                    </ListItemIcon>
-                    <ListItemText>Delete</ListItemText>
-                </MenuItem>
+                {onUploadNewVersion && (
+                    <MenuItem onClick={() => handleMenuAction(() => onUploadNewVersion(document))}>
+                        <ListItemIcon>
+                            <Iconify icon="solar:upload-square-bold" width={20} />
+                        </ListItemIcon>
+                        <ListItemText>Upload New Version</ListItemText>
+                    </MenuItem>
+                )}
+                {onEdit && (
+                    <MenuItem onClick={() => handleMenuAction(() => onEdit(document))}>
+                        <ListItemIcon>
+                            <Iconify icon="solar:pen-bold" width={20} />
+                        </ListItemIcon>
+                        <ListItemText>Edit Details</ListItemText>
+                    </MenuItem>
+                )}
+                {onDelete && (
+                    <>
+                        <Divider />
+                        <MenuItem
+                            onClick={() => handleMenuAction(() => onDelete(document.id))}
+                            sx={{ color: 'error.main' }}
+                        >
+                            <ListItemIcon>
+                                <Iconify icon="solar:trash-bin-trash-bold" width={20} sx={{ color: 'error.main' }} />
+                            </ListItemIcon>
+                            <ListItemText>Delete</ListItemText>
+                        </MenuItem>
+                    </>
+                )}
             </Menu>
         </>
     );

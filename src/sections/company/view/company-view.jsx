@@ -19,6 +19,7 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { useSetState } from 'src/hooks/use-set-state';
 
@@ -71,6 +72,7 @@ const CURRENCY_OPTIONS = [
 
 export function CompanyView() {
   const { company, checkUserSession } = useAuthContext();
+  const { can } = usePermissions();
   const loading = useBoolean();
   const [success, setSuccess] = useState(false);
 
@@ -347,14 +349,16 @@ export function CompanyView() {
             />
 
             <Box sx={{ textAlign: 'right' }}>
-              <Button
-                variant="contained"
-                onClick={handleSave}
-                disabled={loading.value}
-                startIcon={loading.value ? <Iconify icon="svg-spinners:8-dots-rotate" /> : undefined}
-              >
-                Save Changes
-              </Button>
+              {can('company', 'edit') && (
+                <Button
+                  variant="contained"
+                  onClick={handleSave}
+                  disabled={loading.value}
+                  startIcon={loading.value ? <Iconify icon="svg-spinners:8-dots-rotate" /> : undefined}
+                >
+                  Save Changes
+                </Button>
+              )}
             </Box>
           </Stack>
         </Card>

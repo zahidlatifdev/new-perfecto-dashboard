@@ -99,6 +99,9 @@ export function HeaderBase({
             {/* -- Divider -- */}
             <StyledDivider data-slot="divider" />
 
+            {/* -- Workspace popover -- */}
+            {workspaces && <WorkspacesPopover data-slot="workspaces" data={data?.workspaces} />}
+
 
             {slots?.leftAreaEnd}
           </>
@@ -129,9 +132,9 @@ export function HeaderBase({
               )} */}
 
               {/* -- Notifications popover -- */}
-              {/* {notifications && (
+              {notifications && (
                 <NotificationsDrawer data-slot="notifications" data={data?.notifications} />
-              )} */}
+              )}
 
               {/* -- Account drawer -- */}
               {account && <AccountDrawer data-slot="account" data={data?.account} />}

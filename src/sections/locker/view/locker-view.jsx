@@ -21,6 +21,7 @@ import { Iconify } from 'src/components/iconify';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import websocketService from 'src/utils/websocket';
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
 import { DocumentCard } from '../components/document-card';
 import { CategoryFilter } from '../components/category-filter';
 import { UpcomingExpiries } from '../components/upcoming-expiries';
@@ -33,6 +34,7 @@ import { UploadNewVersionModal } from '../components/upload-new-version-modal';
 
 export function LockerView() {
     const { selectedCompany } = useAuthContext();
+    const { can } = usePermissions();
     const [documents, setDocuments] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -473,27 +475,29 @@ export function LockerView() {
                                 with automatic expiry reminders.
                             </Typography>
                         </Box>
-                        <Button
-                            onClick={() => setUploadModalOpen(true)}
-                            variant="contained"
-                            size="large"
-                            startIcon={<Iconify icon="solar:upload-bold" />}
-                            sx={{
-                                bgcolor: 'white',
-                                color: 'primary.main',
-                                boxShadow: (theme) => theme.customShadows.z8,
-                                '&:hover': {
-                                    bgcolor: 'grey.100',
-                                },
-                            }}
-                        >
-                            Upload Document
-                        </Button>
+                        {can('locker', 'create') && (
+                            <Button
+                                onClick={() => setUploadModalOpen(true)}
+                                variant="contained"
+                                size="large"
+                                startIcon={<Iconify icon="solar:upload-bold" />}
+                                sx={{
+                                    bgcolor: 'white',
+                                    color: 'primary.main',
+                                    boxShadow: (theme) => theme.customShadows.z8,
+                                    '&:hover': {
+                                        bgcolor: 'grey.100',
+                                    },
+                                }}
+                            >
+                                Upload Document
+                            </Button>
+                        )}
                     </Stack>
                 </Paper>
 
                 {!isLoading && stats && stats.total === 0 ? (
-                    <EmptyState onUpload={() => setUploadModalOpen(true)} />
+                    <EmptyState onUpload={() => setUploadModalOpen(true)} can={can} />
                 ) : (
                     <>
                         {/* Upcoming Expiries */}
@@ -546,11 +550,11 @@ export function LockerView() {
                                         <DocumentCard
                                             document={doc}
                                             onView={handleView}
-                                            onEdit={handleEdit}
-                                            onDelete={handleDelete}
+                                            onEdit={can('locker', 'edit') ? handleEdit : undefined}
+                                            onDelete={can('locker', 'delete') ? handleDelete : undefined}
                                             onDownload={handleDownload}
                                             onShare={handleShare}
-                                            onUploadNewVersion={handleUploadNewVersion}
+                                            onUploadNewVersion={can('locker', 'create') ? handleUploadNewVersion : undefined}
                                         />
                                     </Grid>
                                 ))}

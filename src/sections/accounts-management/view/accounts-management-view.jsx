@@ -40,6 +40,7 @@ import { Iconify } from 'src/components/iconify';
 import { useRouter } from 'next/navigation';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
 import toast from 'react-hot-toast';
 import { fCurrency } from 'src/utils/format-number';
 
@@ -68,6 +69,7 @@ const formatDateString = (apiDate) => {
 export function AccountsManagementView() {
   const router = useRouter();
   const { selectedCompany } = useAuthContext();
+  const { can } = usePermissions();
   const [currentTab, setCurrentTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState({
@@ -657,30 +659,34 @@ export function AccountsManagementView() {
         Connect your bank accounts, credit cards, or create cash accounts to start managing your finances.
       </Typography>
       <Stack direction="row" spacing={2} justifyContent="center" flexWrap="wrap" gap={2}>
-        <Button
-          variant="contained"
-          onClick={() => handleOpenCreateAccount('bank')}
-          startIcon={<Iconify icon="ph:bank-bold" />}
-          size="large"
-        >
-          Add Bank Account
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => handleOpenCreateAccount('credit')}
-          startIcon={<Iconify icon="ph:credit-card-bold" />}
-          size="large"
-        >
-          Add Credit Card
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => handleOpenCreateAccount('cash')}
-          startIcon={<Iconify icon="ph:wallet-bold" />}
-          size="large"
-        >
-          Add Cash Account
-        </Button>
+        {can('accounts', 'create') && (
+          <>
+            <Button
+              variant="contained"
+              onClick={() => handleOpenCreateAccount('bank')}
+              startIcon={<Iconify icon="ph:bank-bold" />}
+              size="large"
+            >
+              Add Bank Account
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => handleOpenCreateAccount('credit')}
+              startIcon={<Iconify icon="ph:credit-card-bold" />}
+              size="large"
+            >
+              Add Credit Card
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => handleOpenCreateAccount('cash')}
+              startIcon={<Iconify icon="ph:wallet-bold" />}
+              size="large"
+            >
+              Add Cash Account
+            </Button>
+          </>
+        )}
       </Stack>
     </Paper>
   );
@@ -762,14 +768,16 @@ export function AccountsManagementView() {
 
           {/* Add Create Account dropdown button */}
           <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              onClick={handleOpenCreateAccountMenu}
-              startIcon={<Iconify icon="ph:plus-bold" />}
-              endIcon={<Iconify icon="ph:caret-down-bold" />}
-            >
-              Add Account
-            </Button>
+            {can('accounts', 'create') && (
+              <Button
+                variant="contained"
+                onClick={handleOpenCreateAccountMenu}
+                startIcon={<Iconify icon="ph:plus-bold" />}
+                endIcon={<Iconify icon="ph:caret-down-bold" />}
+              >
+                Add Account
+              </Button>
+            )}
             <Button
               variant="outlined"
               onClick={() => setViewAccountsDialog(true)}
@@ -1313,24 +1321,28 @@ export function AccountsManagementView() {
 
           {accountManagementDialog.mode === 'view' && (
             <>
-              <Button
-                variant="outlined"
-                onClick={() => setAccountManagementDialog({ ...accountManagementDialog, mode: 'edit' })}
-                startIcon={<Iconify icon="ph:pencil-bold" />}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => {
-                  handleDeleteAccount(accountManagementDialog.account);
-                  setAccountManagementDialog({ open: false, account: null, accountType: null, mode: 'view' });
-                }}
-                startIcon={<Iconify icon="ph:trash-bold" />}
-              >
-                Delete
-              </Button>
+              {can('accounts', 'edit') && (
+                <Button
+                  variant="outlined"
+                  onClick={() => setAccountManagementDialog({ ...accountManagementDialog, mode: 'edit' })}
+                  startIcon={<Iconify icon="ph:pencil-bold" />}
+                >
+                  Edit
+                </Button>
+              )}
+              {can('accounts', 'delete') && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    handleDeleteAccount(accountManagementDialog.account);
+                    setAccountManagementDialog({ open: false, account: null, accountType: null, mode: 'view' });
+                  }}
+                  startIcon={<Iconify icon="ph:trash-bold" />}
+                >
+                  Delete
+                </Button>
+              )}
             </>
           )}
 

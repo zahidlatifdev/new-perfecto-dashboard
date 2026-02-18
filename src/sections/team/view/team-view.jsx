@@ -29,6 +29,8 @@ import ListItemText from '@mui/material/ListItemText';
 import { alpha } from '@mui/material/styles';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { usePermissions } from 'src/hooks/use-permissions';
+import { INVITABLE_ROLES, ROLES } from 'src/auth/permissions';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 import { Form, Field } from 'src/components/hook-form';
@@ -41,13 +43,14 @@ const InviteSchema = zod.object({
   email: zod.string().min(1, { message: 'Email is required!' }).email({ message: 'Invalid email address!' }),
   firstName: zod.string().min(1, { message: 'First name is required!' }),
   lastName: zod.string().min(1, { message: 'Last name is required!' }),
-  role: zod.enum(['owner', 'admin', 'member'], { message: 'Role is required!' }),
+  role: zod.enum(['admin', 'member'], { message: 'Role is required!' }),
 });
 
 // ----------------------------------------------------------------------
 
 export function TeamView() {
   const { company } = useAuthContext();
+  const { can, role } = usePermissions();
 
   const [invitations, setInvitations] = useState([]);
   const [users, setUsers] = useState([]);
@@ -106,7 +109,7 @@ export function TeamView() {
       setErrorMsg('');
       setSuccessMsg('');
 
-      await axios.post(endpoints.company.inviteUser(company._id), {
+      await axios.post(endpoints.invitations.send(company._id), {
         email: data.email,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -259,22 +262,24 @@ export function TeamView() {
                   collaborate on your financial data.
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                color="inherit"
-                startIcon={<Iconify icon="mdi:plus" width={16} />}
-                onClick={() => setShowInviteDialog(true)}
-                sx={{
-                  bgcolor: 'background.paper',
-                  color: 'primary.main',
-                  fontWeight: 600,
-                  '&:hover': {
-                    bgcolor: 'rgba(255,255,255,0.9)',
-                  },
-                }}
-              >
-                Invite Member
-              </Button>
+              {can('team', 'create') && (
+                <Button
+                  variant="contained"
+                  color="inherit"
+                  startIcon={<Iconify icon="mdi:plus" width={16} />}
+                  onClick={() => setShowInviteDialog(true)}
+                  sx={{
+                    bgcolor: 'background.paper',
+                    color: 'primary.main',
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.9)',
+                    },
+                  }}
+                >
+                  Invite Member
+                </Button>
+              )}
             </Box>
           </Card>
 
@@ -491,14 +496,13 @@ export function TeamView() {
                         </Typography>
                       </Box>
 
-                      {member.status === 'pending' && (
+                      {member.status === 'pending' && can('team', 'create') && (
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
                           <Tooltip title="Resend invitation">
                             <IconButton
                               size="small"
                               color="primary"
                               onClick={() => handleResendInvitation(member._id)}
-                              title="Resend invitation"
                             >
                               <Iconify icon="mdi:email-send" width={20} />
                             </IconButton>
@@ -508,7 +512,6 @@ export function TeamView() {
                               size="small"
                               color="error"
                               onClick={() => handleRevokeInvitation(member._id)}
-                              title="Revoke invitation"
                             >
                               <Iconify icon="mdi:close-circle-outline" width={20} />
                             </IconButton>
@@ -516,7 +519,7 @@ export function TeamView() {
                         </Box>
                       )}
 
-                      {member.status === 'accepted' && member.isUser && (
+                      {member.status === 'accepted' && member.isUser && can('team', 'edit') && member.role !== 'owner' && (
                         <IconButton
                           size="small"
                           onClick={(e) => handleOpenMenu(e, member)}
@@ -619,9 +622,11 @@ export function TeamView() {
               <Field.Text name="lastName" label="Last Name" InputLabelProps={{ shrink: true }} />
               <Field.Text name="email" label="Email Address" InputLabelProps={{ shrink: true }} />
               <Field.Select name="role" label="Role" InputLabelProps={{ shrink: true }}>
-                <MenuItem value="member">Member</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="owner">Owner</MenuItem>
+                {INVITABLE_ROLES.map((r) => (
+                  <MenuItem key={r} value={r}>
+                    {ROLES[r]?.label || r}
+                  </MenuItem>
+                ))}
               </Field.Select>
             </Stack>
           </Form>
@@ -644,48 +649,42 @@ export function TeamView() {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem disabled sx={{ opacity: 0.6, cursor: 'default' }}>
-          <ListItemText
-            primary="Change Role"
-            primaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
-          />
-        </MenuItem>
-        <MenuItem onClick={() => {
-          handleUpdateRole(selectedMember?._id, 'owner');
-        }}>
-          <ListItemIcon>
-            <Iconify icon="mdi:shield-crown" width={18} />
-          </ListItemIcon>
-          <ListItemText primary="Owner" />
-        </MenuItem>
-        <MenuItem onClick={() => {
-          handleUpdateRole(selectedMember?._id, 'admin');
-        }}>
-          <ListItemIcon>
-            <Iconify icon="mdi:shield-account" width={18} />
-          </ListItemIcon>
-          <ListItemText primary="Admin" />
-        </MenuItem>
-        <MenuItem onClick={() => {
-          handleUpdateRole(selectedMember?._id, 'member');
-        }}>
-          <ListItemIcon>
-            <Iconify icon="mdi:account" width={18} />
-          </ListItemIcon>
-          <ListItemText primary="Member" />
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleCloseMenu();
-            handleRemoveUser(selectedMember?._id);
-          }}
-          sx={{ color: 'error.main', mt: 1 }}
-        >
-          <ListItemIcon>
-            <Iconify icon="mdi:delete-outline" width={18} color="error.main" />
-          </ListItemIcon>
-          <ListItemText primary="Remove User" />
-        </MenuItem>
+        {can('team', 'edit') && (
+          <>
+            <MenuItem disabled sx={{ opacity: 0.6, cursor: 'default' }}>
+              <ListItemText
+                primary="Change Role"
+                primaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
+              />
+            </MenuItem>
+            {INVITABLE_ROLES.map((r) => (
+              <MenuItem
+                key={r}
+                disabled={selectedMember?.role === r}
+                onClick={() => handleUpdateRole(selectedMember?._id, r)}
+              >
+                <ListItemIcon>
+                  <Iconify icon={getRoleIcon(r)} width={18} />
+                </ListItemIcon>
+                <ListItemText primary={ROLES[r]?.label || r} />
+              </MenuItem>
+            ))}
+          </>
+        )}
+        {can('team', 'delete') && (
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              handleRemoveUser(selectedMember?._id);
+            }}
+            sx={{ color: 'error.main', mt: 1 }}
+          >
+            <ListItemIcon>
+              <Iconify icon="mdi:delete-outline" width={18} color="error.main" />
+            </ListItemIcon>
+            <ListItemText primary="Remove User" />
+          </MenuItem>
+        )}
       </Menu>
     </DashboardContent>
   );

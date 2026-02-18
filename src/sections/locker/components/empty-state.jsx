@@ -1,7 +1,7 @@
 import { Box, Button, Typography } from '@mui/material';
 import { Iconify } from 'src/components/iconify';
 
-export function EmptyState({ onUpload }) {
+export function EmptyState({ onUpload, can }) {
     return (
         <Box
             sx={{
@@ -42,9 +42,11 @@ export function EmptyState({ onUpload }) {
                 Keep your important business documents safe and never miss a renewal. Upload your first
                 document to get started.
             </Typography>
-            <Button variant="contained" size="large" startIcon={<Iconify icon="solar:upload-bold" />} onClick={onUpload}>
-                Upload Document
-            </Button>
+            {can('locker', 'create') && (
+                <Button variant="contained" size="large" startIcon={<Iconify icon="solar:upload-bold" />} onClick={onUpload}>
+                    Upload Document
+                </Button>
+            )}
         </Box>
     );
 }
